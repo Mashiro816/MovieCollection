@@ -1,16 +1,14 @@
 /**
  * 所有 TMDB 请求都从这个文件发出。
- * 以后想把 key 藏到服务端，或者换成代理，只需要改这里（或设置 VITE_TMDB_API / VITE_TMDB_IMG）。
+ * 浏览器不直接访问 TMDB，而是请求自己网站的 /api/tmdb，由服务端带上 key 转发（见 server/tmdb-proxy.js）。
+ * 所以 key 不会出现在前端代码和浏览器的网络请求里。
  */
 import { KEYWORD_TO_TAG } from './constants'
 import type { CollectionInfo, MovieDetails, MovieLite } from './types'
 
-const API = import.meta.env.VITE_TMDB_API || 'https://api.themoviedb.org/3'
+const API = '/api/tmdb'
+// 海报图片不需要 key，直接从 TMDB 的图片服务器加载
 const IMG = import.meta.env.VITE_TMDB_IMG || 'https://image.tmdb.org/t/p'
-// key 只从环境变量读取（本地是 .env.local，线上是托管平台的环境变量），网页里没有填写入口
-const KEY: string = (import.meta.env.VITE_TMDB_KEY || '').trim()
-
-export const getKey = () => KEY
 
 export const posterUrl = (path: string | null, size: 'w185' | 'w342' | 'w500' = 'w342') =>
   path ? `${IMG}/${size}${path}` : null
@@ -19,24 +17,29 @@ export const backdropUrl = (path: string | null, size: 'w780' | 'w1280' = 'w780'
 
 export class TmdbError extends Error {}
 
-async function request<T>(path: string, params: Record<string, string> = {}): Promise<T> {
-  const key = getKey()
-  if (!key) throw new TmdbError('还没有配置 TMDB key：在 .env.local 里填写 VITE_TMDB_KEY 后重启')
-  const url = new URL(API + path)
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
-  // v4 的 Read Access Token 是 JWT（eyJ 开头），放在请求头；v3 的 key 放在查询参数
-  const isToken = key.startsWith('eyJ')
-  if (!isToken) url.searchParams.set('api_key', key)
+const ERRORS: Record<string, string> = {
+  missing_key: '服务端还没有配置 TMDB key：本地在 .env.local 里填写 TMDB_KEY 后重启，线上在 Vercel 的环境变量里添加',
+  invalid_key: 'TMDB key 无效，请检查环境变量 TMDB_KEY',
+  upstream_unreachable: '服务端连不上 TMDB，稍后再试',
+}
 
+async function request<T>(path: string, params: Record<string, string> = {}): Promise<T> {
+  const query = new URLSearchParams({ path, ...params })
   let res: Response
   try {
-    res = await fetch(url, isToken ? { headers: { Authorization: `Bearer ${key}` } } : undefined)
+    res = await fetch(`${API}?${query}`)
   } catch {
-    throw new TmdbError('连不上 TMDB，请检查网络')
+    throw new TmdbError('网络连接失败，请检查网络')
   }
-  if (res.status === 401) throw new TmdbError('TMDB key 无效，请检查 .env.local 里的 VITE_TMDB_KEY')
-  if (!res.ok) throw new TmdbError(`TMDB 返回错误（${res.status}）`)
-  return res.json() as Promise<T>
+  if (res.ok) return res.json() as Promise<T>
+
+  const code = await res
+    .json()
+    .then((body: { error?: string }) => body.error ?? '')
+    .catch(() => '')
+  if (ERRORS[code]) throw new TmdbError(ERRORS[code])
+  if (res.status === 404 && !code) throw new TmdbError('找不到 /api/tmdb：当前的托管环境没有运行服务端函数')
+  throw new TmdbError(`获取电影数据失败（${res.status}）`)
 }
 
 interface RawMovie {

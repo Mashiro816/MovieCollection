@@ -2,7 +2,6 @@ import { Download, RefreshCw, Upload } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { useEntries, useLog } from '../lib/store'
 import { cloudEnabled, signIn, signOut, signUp, syncAll, useSync } from '../lib/sync'
-import { getKey } from '../lib/tmdb'
 import type { Entry } from '../lib/types'
 import { PageTitle } from './ui'
 
@@ -16,12 +15,10 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function TmdbKey() {
-  return getKey() ? (
-    <p className="text-sm text-ash">海报和简介来自 TMDB，key 已配置。</p>
-  ) : (
-    <p className="text-sm text-ash">
-      还没有配置 TMDB key，搜索不可用。在项目根目录的 <code className="num text-bone">.env.local</code> 里填写{' '}
-      <code className="num text-bone">VITE_TMDB_KEY</code>，然后重启。申请方法见 README。
+  return (
+    <p className="text-sm leading-relaxed text-ash">
+      海报和简介来自 TMDB。访问 TMDB 用的 key 保存在服务端的环境变量{' '}
+      <code className="num text-bone">TMDB_KEY</code> 里，不会出现在网页中。
     </p>
   )
 }

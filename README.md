@@ -34,11 +34,11 @@ npm run dev                  # 打开终端里显示的地址
 
 1. 在 [themoviedb.org](https://www.themoviedb.org/) 注册账号。
 2. 进入账号设置里的 API 页面，申请一个 key（个人用途免费）。
-3. 把 API Key 或 Read Access Token 填到 `.env.local` 的 `VITE_TMDB_KEY`，然后重启 `npm run dev`。
+3. 把 API Key 或 Read Access Token 填到 `.env.local` 的 `TMDB_KEY`，然后重启 `npm run dev`。
 
-key 只在这里配置，网页里没有填写入口。`.env.local` 已在 `.gitignore` 里，不会被提交。部署到线上时，在托管平台的环境变量里填同一个变量。
+key 只在服务端使用：浏览器请求自己网站的 `/api/tmdb`，由服务端带上 key 去访问 TMDB，所以 key 不会出现在前端代码和浏览器的网络请求里。本地运行时这层转发由 Vite 的开发服务器承担，线上由 Vercel 的服务端函数承担，两边用的是同一份代码（`server/tmdb-proxy.js`）。
 
-注意：带 `VITE_` 前缀的变量会被打包进前端代码，任何打开你网站的人都能在浏览器里看到这个 key。个人自用问题不大；如果介意，可以自己搭一个代理，把 `VITE_TMDB_API` 指向它，所有请求都从 `src/lib/tmdb.ts` 发出，只需要改这一个文件。
+`.env.local` 已在 `.gitignore` 里，不会被提交。
 
 ### 2. 云同步（可选）
 
@@ -58,26 +58,30 @@ key 只在这里配置，网页里没有填写入口。`.env.local` 已在 `.git
 
 ### 3. 网络
 
-TMDB 和 Supabase 在中国大陆的连通性不稳定。如果需要在大陆使用，可以用 Cloudflare Workers 之类的服务做一层反向代理，然后设置 `VITE_TMDB_API` 和 `VITE_TMDB_IMG` 指向代理地址。
+TMDB 和 Supabase 在中国大陆的连通性不稳定。接口请求是从服务端发出的，部署在 Vercel 上时不受影响；海报图片仍由浏览器直接从 TMDB 加载，如果在大陆显示不出来，可以用 Cloudflare Workers 之类的服务给图片做一层反向代理，然后设置 `VITE_TMDB_IMG` 指向代理地址。
 
 ## 部署
 
-这是纯静态网站，任何静态托管都可以。以 Vercel 为例：
+推荐部署到 Vercel，`api/` 目录会被自动部署成服务端函数。
 
 1. 把代码推到 GitHub。
 2. 在 Vercel 里导入这个仓库，框架会自动识别为 Vite。
-3. 在项目的环境变量里填上面的 `VITE_` 变量，然后部署。
+3. 在项目的环境变量里添加 `TMDB_KEY`（以及云同步用的两个 `VITE_SUPABASE_` 变量，如果配置了的话），然后部署。
 
-之后每次推送到 GitHub，Vercel 会自动重新部署。Cloudflare Pages 的流程相同：构建命令 `npm run build`，输出目录 `dist`。
+之后每次推送到 GitHub，Vercel 会自动重新部署。修改环境变量后需要重新部署一次才会生效。
+
+部署到其他平台时，需要让 `/api/tmdb` 这个地址运行 `server/tmdb-proxy.js` 里的转发逻辑，写法参考 `api/tmdb.js`。纯静态托管（没有服务端函数）无法搜索电影。
 
 ## 代码结构
 
 ```
+api/tmdb.js            Vercel 的服务端函数入口，地址是 /api/tmdb
+server/tmdb-proxy.js   TMDB 转发的实现（线上和本地共用）
 src/
   lib/
     types.ts       数据结构（一条片单记录长什么样）
     constants.ts   评级名称和颜色、子类型标签对照表、观影方式选项
-    tmdb.ts        所有 TMDB 请求
+    tmdb.ts        所有 TMDB 请求（发往 /api/tmdb）
     store.ts       片单数据（保存在 localStorage）和界面状态
     sync.ts        云同步和登录
     actions.ts     添加电影、弹层的通用逻辑

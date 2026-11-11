@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { addMovie, removeMovie, useOverlay } from '../lib/actions'
 import { ALL_TAGS, CONTEXT_OPTIONS, TIERS, today } from '../lib/constants'
 import { useEntries, useEntry, useLog, useUi } from '../lib/store'
-import { backdropUrl, doubanSearchUrl, getKey, getMovie, tmdbUrl } from '../lib/tmdb'
+import { backdropUrl, doubanSearchUrl, getMovie, tmdbUrl } from '../lib/tmdb'
 import type { Entry, MovieDetails, MovieLite, WatchContext } from '../lib/types'
 import { Backdrop, Poster, Skulls } from './ui'
 
@@ -179,7 +179,6 @@ function Sheet({ movie }: { movie: MovieLite }) {
     setDetails(null)
     setError('')
     setConfirmRemove(false)
-    if (!getKey()) return
     let alive = true
     getMovie(id)
       .then((d) => alive && setDetails(d))

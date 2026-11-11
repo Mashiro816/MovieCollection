@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { addMovie, useOverlay } from '../lib/actions'
 import { HORROR_GENRE_ID } from '../lib/constants'
 import { useLog, useUi } from '../lib/store'
-import { getKey, searchMovies } from '../lib/tmdb'
+import { searchMovies } from '../lib/tmdb'
 import type { MovieLite } from '../lib/types'
 import { Backdrop, Poster } from './ui'
 
@@ -134,7 +134,6 @@ function Panel() {
   const horror = results?.filter((m) => m.genreIds.includes(HORROR_GENRE_ID)) ?? []
   const shown = horrorOnly ? horror : (results ?? [])
   const hidden = (results?.length ?? 0) - horror.length
-  const noKey = !getKey()
 
   return (
     <div className="fixed inset-0 z-40">
@@ -186,12 +185,7 @@ function Panel() {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-5">
-          {noKey ? (
-            <p className="px-3 py-8 text-sm leading-relaxed text-ash">
-              还没有配置 TMDB key，搜不到电影。在项目根目录的 <code className="num text-bone">.env.local</code> 里填写{' '}
-              <code className="num text-bone">VITE_TMDB_KEY</code>，然后重启。
-            </p>
-          ) : error ? (
+          {error ? (
             <p className="px-3 py-8 text-sm text-flare">{error}</p>
           ) : results === null ? (
             loading ? (

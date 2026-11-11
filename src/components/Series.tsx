@@ -1,7 +1,7 @@
 import { Bookmark } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useEntries, useLog, useUi } from '../lib/store'
-import { getCollection, getKey } from '../lib/tmdb'
+import { getCollection } from '../lib/tmdb'
 import type { Entry, MovieLite } from '../lib/types'
 import { Empty, PageTitle, Poster, TierBadge } from './ui'
 
@@ -15,7 +15,7 @@ function SeriesBlock({ id, name, mine }: { id: number; name: string; mine: Entry
 
   useEffect(() => {
     const fresh = info && Date.now() - new Date(info.fetchedAt).getTime() < STALE_MS
-    if (fresh || !getKey()) return
+    if (fresh) return
     let alive = true
     getCollection(id)
       .then((c) => alive && setCollection(c))

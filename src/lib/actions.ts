@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { toast } from 'sonner'
 import { useLog } from './store'
-import { getKey, getMovie } from './tmdb'
+import { getMovie } from './tmdb'
 import type { MovieLite, Status } from './types'
 
 /** 加入片单，并在后台向 TMDB 补全片长、系列和子类型标签 */
@@ -9,7 +9,7 @@ export function addMovie(movie: MovieLite, status: Status) {
   const { add, enrich, entries } = useLog.getState()
   add(movie, status)
   if (status === 'wishlist') toast('已加入想看', { description: movie.title })
-  if (!entries[movie.id]?.enriched && getKey()) {
+  if (!entries[movie.id]?.enriched) {
     getMovie(movie.id)
       .then(enrich)
       .catch(() => {
