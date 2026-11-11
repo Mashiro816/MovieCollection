@@ -145,7 +145,10 @@ export const useUi = create<UiState>()((set) => ({
   detail: null,
   searchOpen: false,
   tonightOpen: false,
-  go: (view) => set({ view, detail: null }),
+  go: (view) => {
+    window.scrollTo(0, 0) // 换页面时回到顶部
+    set({ view, detail: null })
+  },
   setLibraryTab: (libraryTab) => set({ libraryTab }),
   openDetail: (detail) => set({ detail }),
   setSearchOpen: (searchOpen) => set({ searchOpen }),

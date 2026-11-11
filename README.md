@@ -102,6 +102,16 @@ supabase/schema.sql  云同步用的数据表
 - 加子类型标签：`src/lib/constants.ts` 里的 `KEYWORD_TO_TAG`（左边是 TMDB 的英文关键词，右边是中文标签）
 - 改配色和字体：`src/index.css` 顶部的 `@theme`
 
+## 用到的库
+
+- [Motion](https://motion.dev/)：过渡动画（弹层进出、导航和评级的滑动高亮、卡片入场）
+- [Radix UI](https://www.radix-ui.com/) 的 Select：下拉选择
+- [Sonner](https://sonner.emilkowal.ski/)：操作提示（加入想看、移出片单后可撤销）
+- [Lucide](https://lucide.dev/)：图标
+- Noto Serif SC：标题字体，随项目打包，不依赖系统字体
+
+系统开启"减少动态效果"时，位移和缩放动画会自动关闭。
+
 ## 数据来源
 
 本应用使用 TMDB API 提供的电影数据和图片，但未获得 TMDB 的认可或认证。

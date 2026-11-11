@@ -1,9 +1,11 @@
 import { Dices, Skull } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useMemo, useState } from 'react'
-import { TIERS, tierRank } from '../lib/constants'
+import { TIERS, tierOf, tierRank } from '../lib/constants'
 import { useEntries, useUi } from '../lib/store'
+import { backdropUrl } from '../lib/tmdb'
 import type { Entry, Status, TierId } from '../lib/types'
-import { Empty, Poster, TierBadge } from './ui'
+import { Empty, Poster, Select, Skulls, TierBadge } from './ui'
 
 type Sort = 'recent' | 'tier' | 'scare' | 'year' | 'runtime'
 
@@ -35,20 +37,72 @@ function sortEntries(list: Entry[], sort: Sort, tab: Status) {
   return [...list].sort(by[sort])
 }
 
-export function MovieCard({ entry }: { entry: Entry }) {
+/** 首页顶部的大图：最近看的一部。顶栏浮在它上面 */
+function Hero({ entry }: { entry: Entry }) {
+  const openDetail = useUi((s) => s.openDetail)
+  const src = backdropUrl(entry.backdropPath, 'w1280')
+  const tier = tierOf(entry.tier)
+  return (
+    <button
+      onClick={() => openDetail(entry)}
+      className="group relative -mx-4 -mt-[84px] mb-8 block h-[340px] w-[calc(100%+2rem)] overflow-hidden text-left md:-mx-10 md:-mt-[92px] md:mb-10 md:h-[440px] md:w-[calc(100%+5rem)]"
+    >
+      {src && (
+        <motion.img
+          key={src}
+          src={src}
+          alt=""
+          initial={{ opacity: 0, scale: 1.06 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute inset-0 h-full w-full object-cover object-[center_25%]"
+        />
+      )}
+      {/* 两层渐变：底部融进页面，左侧压暗保证文字可读 */}
+      <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/25" />
+      <div className="absolute inset-0 bg-gradient-to-r from-ink/85 via-ink/20 to-transparent" />
+
+      <div className="absolute inset-x-4 bottom-6 md:inset-x-10 md:bottom-9">
+        <p className="mb-2 text-[13px] text-bone/70">最近看的</p>
+        <h2 className="max-w-2xl font-serif text-[34px] leading-[1.15] font-bold md:text-[52px]">{entry.title}</h2>
+        <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          {tier && (
+            <span className="flex items-center gap-2">
+              <TierBadge tier={entry.tier} />
+              <span style={{ color: tier.color }}>{tier.name}</span>
+            </span>
+          )}
+          {entry.scare > 0 && <Skulls value={entry.scare} size={15} />}
+          <span className="num text-bone/60">{[entry.year, entry.watchedAt].filter(Boolean).join('　看于 ')}</span>
+        </div>
+        {entry.note && <p className="mt-3 max-w-xl truncate font-serif text-[15px] text-bone/80">"{entry.note}"</p>}
+      </div>
+    </button>
+  )
+}
+
+export function MovieCard({ entry, index = 0 }: { entry: Entry; index?: number }) {
   const openDetail = useUi((s) => s.openDetail)
   return (
-    <button onClick={() => openDetail(entry)} className="group block text-left">
-      <div className="relative">
-        <Poster movie={entry} className="ring-1 ring-white/5 transition group-hover:ring-flare/70" />
+    <motion.button
+      layout="position"
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: Math.min(index, 14) * 0.028 }}
+      onClick={() => openDetail(entry)}
+      className="group block text-left"
+    >
+      <div className="relative overflow-hidden rounded-xl shadow-poster ring-1 ring-white/[0.08] transition duration-300 ease-out-soft group-hover:-translate-y-1 group-hover:ring-white/30">
+        <Poster movie={entry} className="rounded-none transition-transform duration-500 ease-out-soft group-hover:scale-[1.05]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/45 to-transparent" />
         {entry.tier && (
-          <span className="absolute top-1.5 left-1.5 shadow-[0_2px_8px_rgb(0_0_0/0.6)]">
+          <span className="absolute top-2 left-2">
             <TierBadge tier={entry.tier} />
           </span>
         )}
       </div>
-      <p className="mt-2 truncate text-sm leading-snug text-bone">{entry.title}</p>
-      <p className="num flex items-center gap-2 text-xs text-ash">
+      <p className="mt-2.5 truncate text-sm leading-snug text-bone">{entry.title}</p>
+      <p className="num mt-0.5 flex items-center gap-2 text-xs text-ash">
         <span>{entry.year || '年份不详'}</span>
         {entry.status === 'watched' && entry.scare > 0 && (
           <span className="flex items-center gap-0.5 text-flare">
@@ -58,7 +112,7 @@ export function MovieCard({ entry }: { entry: Entry }) {
         )}
         {entry.status === 'wishlist' && entry.runtime && <span>{entry.runtime} 分钟</span>}
       </p>
-    </button>
+    </motion.button>
   )
 }
 
@@ -75,6 +129,15 @@ export function Library() {
       watched: entries.filter((e) => e.status === 'watched').length,
       wishlist: entries.filter((e) => e.status === 'wishlist').length,
     }),
+    [entries],
+  )
+  const latest = useMemo(
+    () =>
+      sortEntries(
+        entries.filter((e) => e.status === 'watched' && e.backdropPath),
+        'recent',
+        'watched',
+      )[0],
     [entries],
   )
   const tags = useMemo(() => {
@@ -99,6 +162,8 @@ export function Library() {
 
   return (
     <div>
+      {latest && <Hero entry={latest} />}
+
       {/* 两个片单的切换，同时就是页面标题 */}
       <div className="mb-6 flex items-end gap-7" role="tablist">
         {(['watched', 'wishlist'] as const).map((t) => (
@@ -107,18 +172,25 @@ export function Library() {
             role="tab"
             aria-selected={tab === t}
             onClick={() => switchTab(t)}
-            className={`flex items-baseline gap-2 border-b-2 pb-1.5 transition-colors ${
-              tab === t ? 'border-flare text-bone' : 'border-transparent text-dim hover:text-ash'
+            className={`relative flex items-baseline gap-2 pb-2.5 transition-colors duration-200 ${
+              tab === t ? 'text-bone' : 'text-dim hover:text-ash'
             }`}
           >
-            <span className="font-serif text-[28px] leading-tight font-bold md:text-[34px]">
+            <span className="font-serif text-[30px] leading-tight font-bold md:text-[38px]">
               {t === 'watched' ? '看过' : '想看'}
             </span>
             <span className="num text-sm">{counts[t]}</span>
+            {tab === t && (
+              <motion.span
+                layoutId="library-tab"
+                className="absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-flare"
+                transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+              />
+            )}
           </button>
         ))}
         {tab === 'wishlist' && counts.wishlist > 0 && (
-          <button onClick={() => setTonightOpen(true)} className="btn btn-primary mb-1.5 ml-auto">
+          <button onClick={() => setTonightOpen(true)} className="btn btn-primary mb-2.5 ml-auto">
             <Dices size={17} />
             今晚看什么
           </button>
@@ -136,7 +208,7 @@ export function Library() {
         </Empty>
       ) : (
         <>
-          <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-3">
+          <div className="-mx-4 mb-6 flex items-center gap-2.5 overflow-x-auto px-4 py-1 md:mx-0 md:flex-wrap md:px-0 [&>*]:shrink-0">
             {tab === 'watched' && (
               <div className="flex gap-1.5" aria-label="按评级筛选">
                 {TIERS.map((t) => (
@@ -145,11 +217,11 @@ export function Library() {
                     onClick={() => setTier(tier === t.id ? null : t.id)}
                     aria-pressed={tier === t.id}
                     title={t.name}
-                    className="num flex h-8 w-8 items-center justify-center rounded-[3px] border text-[13px] font-bold transition-colors"
+                    className="num flex h-9 w-9 items-center justify-center rounded-full border text-[13px] font-bold transition duration-200 active:scale-95"
                     style={
                       tier === t.id
-                        ? { background: t.color, borderColor: t.color, color: '#0a090c' }
-                        : { borderColor: '#2c2831', color: t.color }
+                        ? { background: t.color, borderColor: t.color, color: '#09080b' }
+                        : { borderColor: 'rgb(255 255 255 / 0.1)', background: 'rgb(255 255 255 / 0.04)', color: t.color }
                     }
                   >
                     {t.id}
@@ -158,40 +230,31 @@ export function Library() {
               </div>
             )}
             {tags.length > 0 && (
-              <select
+              <Select
+                label="按子类型筛选"
                 value={tag}
-                onChange={(e) => setTag(e.target.value)}
-                className="field h-8 w-auto py-0 pr-8 text-[13px]"
-                aria-label="按子类型筛选"
-              >
-                <option value="">全部子类型</option>
-                {tags.map(([t, n]) => (
-                  <option key={t} value={t}>
-                    {t}（{n}）
-                  </option>
-                ))}
-              </select>
+                onChange={setTag}
+                options={[{ value: '', label: '全部子类型' }, ...tags.map(([t, n]) => ({ value: t, label: `${t}（${n}）` }))]}
+              />
             )}
-            <select
+            <Select
+              label="排序"
               value={activeSort}
-              onChange={(e) => setSort(e.target.value as Sort)}
-              className="field h-8 w-auto py-0 pr-8 text-[13px] sm:ml-auto"
-              aria-label="排序"
-            >
-              {SORTS[tab].map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setSort(v as Sort)}
+              options={SORTS[tab]}
+              className="md:ml-auto"
+            />
           </div>
 
           {shown.length === 0 ? (
             <p className="py-10 text-sm text-ash">没有符合筛选条件的电影。</p>
           ) : (
-            <div className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 md:grid-cols-[repeat(auto-fill,minmax(148px,1fr))] md:gap-x-5 md:gap-y-7">
-              {shown.map((e) => (
-                <MovieCard key={e.id} entry={e} />
+            <div
+              key={tab}
+              className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 md:grid-cols-[repeat(auto-fill,minmax(156px,1fr))] md:gap-x-6 md:gap-y-9"
+            >
+              {shown.map((e, i) => (
+                <MovieCard key={e.id} entry={e} index={i} />
               ))}
             </div>
           )}

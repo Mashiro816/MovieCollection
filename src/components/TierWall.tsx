@@ -1,3 +1,4 @@
+import { motion } from 'motion/react'
 import { useMemo } from 'react'
 import { TIERS } from '../lib/constants'
 import { useEntries, useUi } from '../lib/store'
@@ -9,30 +10,42 @@ function Row({
   name,
   color,
   entries,
+  index,
 }: {
   letter: string
   name: string
   color: string
   entries: Entry[]
+  index: number
 }) {
   const openDetail = useUi((s) => s.openDetail)
   return (
-    <section
-      className="grid border-b border-line md:grid-cols-[168px_1fr]"
-      style={{ borderLeft: `3px solid ${color}` }}
+    <motion.section
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: index * 0.06 }}
+      className="card relative grid overflow-hidden md:grid-cols-[190px_1fr]"
       aria-label={name}
     >
+      {/* 档位颜色从左侧晕开，越靠右越淡 */}
       <div
-        className="flex items-center gap-3 px-4 py-2.5 md:flex-col md:items-start md:justify-center md:gap-0 md:py-5"
-        style={{ background: `linear-gradient(90deg, ${color}1f, transparent)` }}
-      >
-        <span className="num text-3xl leading-none font-bold md:text-[56px]" style={{ color }}>
+        className="pointer-events-none absolute inset-0"
+        style={{ background: `radial-gradient(520px 260px at 0% 50%, ${color}26, transparent 70%)` }}
+      />
+      <div className="absolute inset-y-0 left-0 w-[3px]" style={{ background: color }} />
+
+      <div className="relative flex items-center gap-3 px-5 pt-4 md:flex-col md:items-start md:justify-center md:gap-0 md:px-7 md:py-6">
+        <span
+          className="num text-[40px] leading-none font-bold md:text-[72px]"
+          style={{ color, textShadow: `0 0 36px ${color}66` }}
+        >
           {letter}
         </span>
-        <span className="font-serif text-base font-bold md:mt-2 md:text-lg">{name}</span>
-        <span className="num ml-auto text-xs text-ash md:mt-0.5 md:ml-0">{entries.length} 部</span>
+        <span className="font-serif text-lg font-bold md:mt-2.5 md:text-xl">{name}</span>
+        <span className="num ml-auto text-xs text-ash md:mt-1 md:ml-0">{entries.length} 部</span>
       </div>
-      <div className="grid min-h-[72px] grid-cols-5 content-start gap-2 px-3 py-3 md:flex md:min-h-[132px] md:flex-wrap md:gap-2.5 md:px-4 md:py-4">
+
+      <div className="relative grid min-h-[72px] grid-cols-5 content-start gap-2 p-4 md:flex md:min-h-[150px] md:flex-wrap md:gap-3 md:py-5 md:pr-6 md:pl-0">
         {entries.length === 0 ? (
           <span className="col-span-5 self-center text-[13px] text-dim">这一档还空着</span>
         ) : (
@@ -41,14 +54,14 @@ function Row({
               key={e.id}
               onClick={() => openDetail(e)}
               title={e.title}
-              className="transition hover:-translate-y-0.5 md:w-[84px]"
+              className="rounded-lg shadow-poster ring-1 ring-white/[0.08] transition duration-300 ease-out-soft hover:-translate-y-1 hover:ring-white/35 md:w-[92px]"
             >
-              <Poster movie={e} size="w185" />
+              <Poster movie={e} size="w185" className="rounded-lg" />
             </button>
           ))
         )}
       </div>
-    </section>
+    </motion.section>
   )
 }
 
@@ -77,17 +90,18 @@ export function TierWall() {
           </button>
         </Empty>
       ) : (
-        <div className="overflow-hidden rounded-md border border-b-0 border-line bg-panel">
-          {TIERS.map((t) => (
+        <div className="flex flex-col gap-3">
+          {TIERS.map((t, i) => (
             <Row
               key={t.id}
+              index={i}
               letter={t.id}
               name={t.name}
               color={t.color}
               entries={watched.filter((e) => e.tier === t.id)}
             />
           ))}
-          {unrated.length > 0 && <Row letter="?" name="还没评级" color="#615a66" entries={unrated} />}
+          {unrated.length > 0 && <Row index={5} letter="?" name="还没评级" color="#655e6a" entries={unrated} />}
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { Skull } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useMemo } from 'react'
 import { CONTEXT_OPTIONS, TIERS } from '../lib/constants'
 import { useEntries } from '../lib/store'
@@ -6,12 +7,15 @@ import { Empty, PageTitle } from './ui'
 
 function Bar({ label, value, max, color = '#ebe5df' }: { label: React.ReactNode; value: number; max: number; color?: string }) {
   return (
-    <div className="grid grid-cols-[92px_1fr_36px] items-center gap-3 py-1.5 text-sm">
+    <div className="grid grid-cols-[92px_1fr_36px] items-center gap-3 py-2 text-sm">
       <span className="truncate text-ash">{label}</span>
-      <span className="h-2.5 overflow-hidden rounded-sm bg-raise">
-        <span
-          className="block h-full rounded-sm"
-          style={{ width: `${max ? (value / max) * 100 : 0}%`, background: color }}
+      <span className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+        <motion.span
+          className="block h-full rounded-full"
+          style={{ background: color }}
+          initial={{ width: 0 }}
+          animate={{ width: `${max ? (value / max) * 100 : 0}%` }}
+          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
         />
       </span>
       <span className="num text-right text-bone">{value}</span>
@@ -21,8 +25,8 @@ function Bar({ label, value, max, color = '#ebe5df' }: { label: React.ReactNode;
 
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-md border border-line bg-panel p-5">
-      <h2 className="mb-3 font-serif text-lg font-bold">{title}</h2>
+    <section className="card p-6">
+      <h2 className="mb-4 font-serif text-xl font-bold">{title}</h2>
       {children}
     </section>
   )
@@ -72,19 +76,19 @@ export function Stats() {
   return (
     <div>
       <PageTitle>统计</PageTitle>
-      <dl className="mb-5 grid grid-cols-2 overflow-hidden rounded-md border border-line bg-panel sm:grid-cols-3 lg:grid-cols-5">
+      <dl className="card mb-4 grid grid-cols-2 overflow-hidden sm:grid-cols-3 lg:grid-cols-5">
         {figures.map((f) => (
-          <div key={f.label} className="-mr-px -mb-px border-r border-b border-line px-5 py-4">
+          <div key={f.label} className="-mr-px -mb-px border-r border-b border-white/[0.06] px-6 py-5">
             <dt className="text-[13px] text-ash">{f.label}</dt>
-            <dd className="mt-1 flex items-baseline gap-1.5">
-              <span className="num text-[28px] leading-none font-semibold">{f.value}</span>
+            <dd className="mt-1.5 flex items-baseline gap-1.5">
+              <span className="num text-[32px] leading-none font-semibold">{f.value}</span>
               <span className="text-[13px] text-ash">{f.unit}</span>
             </dd>
           </div>
         ))}
       </dl>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Block title="评级分布">
           {s.tiers.map((t) => (
             <Bar
@@ -135,7 +139,7 @@ export function Stats() {
             {(Object.keys(CONTEXT_OPTIONS) as (keyof typeof CONTEXT_OPTIONS)[]).map((k) => (
               <div key={k}>
                 {CONTEXT_OPTIONS[k].map((o) => (
-                  <p key={o.value} className="flex items-baseline justify-between border-b border-line py-2 text-sm">
+                  <p key={o.value} className="flex items-baseline justify-between border-b border-white/[0.06] py-2.5 text-sm">
                     <span className="text-ash">{o.label}</span>
                     <span className="num">{s.watched.filter((e) => e.context[k] === o.value).length}</span>
                   </p>

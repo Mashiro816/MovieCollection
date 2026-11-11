@@ -4,6 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  // 所有代码打成一个文件，体积略超默认的提醒线，对个人应用没有影响
+  build: { chunkSizeWarningLimit: 800 },
   plugins: [
     react(),
     tailwindcss(),

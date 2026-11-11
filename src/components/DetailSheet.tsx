@@ -1,11 +1,12 @@
 import { Bookmark, Check, ExternalLink, Eye, Plus, Trash2, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useState } from 'react'
-import { addMovie, useOverlay } from '../lib/actions'
+import { addMovie, removeMovie, useOverlay } from '../lib/actions'
 import { ALL_TAGS, CONTEXT_OPTIONS, TIERS, today } from '../lib/constants'
 import { useEntries, useEntry, useLog, useUi } from '../lib/store'
 import { backdropUrl, doubanSearchUrl, getKey, getMovie, tmdbUrl } from '../lib/tmdb'
-import type { Entry, MovieDetails, WatchContext } from '../lib/types'
-import { Poster, Skulls } from './ui'
+import type { Entry, MovieDetails, MovieLite, WatchContext } from '../lib/types'
+import { Backdrop, Poster, Skulls } from './ui'
 
 /** 看过的电影：评级、吓人指数、观看日期、观影方式、短评 */
 function WatchedForm({ entry }: { entry: Entry }) {
@@ -14,7 +15,7 @@ function WatchedForm({ entry }: { entry: Entry }) {
     patch(entry.id, { context: { ...entry.context, [k]: entry.context[k] === v ? null : v } })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <div>
         <span className="label">评级</span>
         <div className="grid grid-cols-5 gap-1.5" role="radiogroup" aria-label="评级">
@@ -25,16 +26,30 @@ function WatchedForm({ entry }: { entry: Entry }) {
                 key={t.id}
                 role="radio"
                 aria-checked={on}
+                aria-label={`${t.id} ${t.name}`}
                 onClick={() => patch(entry.id, { tier: on ? null : t.id })}
-                className="flex flex-col items-center gap-1 rounded-md border px-1 py-2.5 transition-colors"
-                style={
-                  on
-                    ? { background: t.color, borderColor: t.color, color: '#0a090c' }
-                    : { borderColor: '#2c2831', color: t.color }
-                }
+                className="relative flex flex-col items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-1 py-3 transition duration-200 hover:border-white/25 active:scale-[0.97]"
               >
-                <span className="num text-2xl leading-none font-bold">{t.id}</span>
-                <span className={`text-[11px] leading-tight ${on ? 'font-medium text-ink' : 'text-ash'}`}>{t.name}</span>
+                {/* 选中的色块在档位之间滑动 */}
+                {on && (
+                  <motion.span
+                    layoutId="tier-pick"
+                    className="absolute -inset-px rounded-xl"
+                    style={{ background: t.color, boxShadow: `0 8px 28px -8px ${t.color}` }}
+                    transition={{ type: 'spring', stiffness: 460, damping: 34 }}
+                  />
+                )}
+                <span
+                  className="num relative text-[26px] leading-none font-bold transition-colors duration-200"
+                  style={{ color: on ? '#09080b' : t.color }}
+                >
+                  {t.id}
+                </span>
+                <span
+                  className={`relative text-[11px] leading-tight transition-colors duration-200 ${on ? 'font-medium text-ink' : 'text-ash'}`}
+                >
+                  {t.name}
+                </span>
               </button>
             )
           })}
@@ -56,7 +71,7 @@ function WatchedForm({ entry }: { entry: Entry }) {
           max={today()}
           value={entry.watchedAt ?? ''}
           onChange={(e) => patch(entry.id, { watchedAt: e.target.value || null })}
-          className="field num w-44"
+          className="field num w-48"
         />
       </div>
 
@@ -90,7 +105,7 @@ function WatchedForm({ entry }: { entry: Entry }) {
           value={entry.note}
           onChange={(e) => patch(entry.id, { note: e.target.value })}
           placeholder="比如：后半段才是正片"
-          className="field h-auto resize-y py-2.5 leading-relaxed"
+          className="field h-auto resize-y py-3 leading-relaxed"
         />
       </div>
     </div>
@@ -99,6 +114,7 @@ function WatchedForm({ entry }: { entry: Entry }) {
 
 function Tags({ entry }: { entry: Entry }) {
   const patch = useLog((s) => s.patch)
+  const [adding, setAdding] = useState(false)
   const rest = ALL_TAGS.filter((t) => !entry.tags.includes(t))
   return (
     <div>
@@ -115,44 +131,55 @@ function Tags({ entry }: { entry: Entry }) {
             <X size={13} className="ml-1 text-dim" />
           </button>
         ))}
-        <select
-          value=""
-          onChange={(e) => e.target.value && patch(entry.id, { tags: [...entry.tags, e.target.value] })}
-          className="chip w-auto appearance-none bg-transparent pr-3"
-          aria-label="添加子类型标签"
-        >
-          <option value="">+ 加标签</option>
-          {rest.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
+        <button className="chip border-dashed" onClick={() => setAdding(!adding)} aria-expanded={adding}>
+          <Plus size={13} className="mr-1" />
+          {adding ? '收起' : '加标签'}
+        </button>
       </div>
+      <AnimatePresence initial={false}>
+        {adding && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="mt-3 flex flex-wrap gap-1.5 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+              {rest.map((t) => (
+                <button key={t} className="chip h-7 px-2.5 text-xs" onClick={() => patch(entry.id, { tags: [...entry.tags, t] })}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
-export function DetailSheet() {
-  const movie = useUi((s) => s.detail)
+function Sheet({ movie }: { movie: MovieLite }) {
   const openDetail = useUi((s) => s.openDetail)
   const go = useUi((s) => s.go)
-  const entry = useEntry(movie?.id)
+  const entry = useEntry(movie.id)
   const all = useEntries()
-  const { patch, remove, enrich } = useLog()
+  const { patch, enrich } = useLog()
   const [details, setDetails] = useState<MovieDetails | null>(null)
   const [error, setError] = useState('')
   const [confirmRemove, setConfirmRemove] = useState(false)
+  // 电脑上从右侧滑入，手机上从底部升起
+  const [desktop] = useState(() => window.matchMedia('(min-width: 768px)').matches)
 
   const close = useCallback(() => openDetail(null), [openDetail])
-  useOverlay(movie != null, close)
+  useOverlay(true, close)
 
-  const id = movie?.id
+  const id = movie.id
   useEffect(() => {
     setDetails(null)
     setError('')
     setConfirmRemove(false)
-    if (id == null || !getKey()) return
+    if (!getKey()) return
     let alive = true
     getMovie(id)
       .then((d) => alive && setDetails(d))
@@ -167,8 +194,6 @@ export function DetailSheet() {
     if (details && entry && !entry.enriched && details.id === entry.id) enrich(details)
   }, [details, entry, enrich])
 
-  if (!movie) return null
-
   const title = entry?.title ?? movie.title
   const overview = entry?.overview || details?.overview || movie.overview
   const runtime = entry?.runtime ?? details?.runtime ?? null
@@ -177,37 +202,56 @@ export function DetailSheet() {
   const seenInSeries = collection
     ? all.filter((e) => e.collection?.id === collection.id && e.status === 'watched').length
     : 0
+  const off = desktop ? { x: '100%' } : { y: '100%' }
 
   return (
-    <div className="anim-fade fixed inset-0 z-30 bg-black/65" onClick={close}>
-      <aside
+    <div className="fixed inset-0 z-30">
+      <Backdrop onClick={close} />
+      <motion.aside
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        onClick={(e) => e.stopPropagation()}
-        className="anim-sheet absolute inset-y-0 right-0 w-full overflow-y-auto bg-panel md:w-[500px] md:border-l md:border-line"
+        initial={off}
+        animate={{ x: 0, y: 0 }}
+        exit={off}
+        transition={{ type: 'spring', stiffness: 340, damping: 36 }}
+        className="absolute inset-y-0 right-0 w-full overflow-y-auto bg-panel shadow-float md:w-[520px] md:border-l md:border-white/[0.08]"
       >
-        <div className="relative h-36 bg-raise md:h-44">
-          {backdrop && <img src={backdrop} alt="" className="h-full w-full object-cover opacity-55" />}
-          <div className="absolute inset-0 bg-gradient-to-t from-panel to-transparent" />
+        <div className="relative h-44 overflow-hidden bg-raise md:h-56">
+          {backdrop && (
+            <motion.img
+              key={backdrop}
+              src={backdrop}
+              alt=""
+              initial={{ opacity: 0, scale: 1.08 }}
+              animate={{ opacity: 0.6, scale: 1 }}
+              transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+              className="h-full w-full object-cover"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-panel via-panel/30 to-transparent" />
           <button
             onClick={close}
-            className="absolute top-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-ink/70 text-bone backdrop-blur hover:bg-ink"
+            className="absolute top-3.5 right-3.5 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-ink/60 text-bone backdrop-blur-md transition hover:bg-ink active:scale-95"
             aria-label="关闭"
           >
             <X size={19} />
           </button>
         </div>
 
-        <div className="space-y-7 px-5 pb-12">
-          <div className="-mt-16 flex gap-4">
-            <Poster movie={movie} className="relative w-[108px] shrink-0 shadow-[0_8px_30px_rgb(0_0_0/0.6)]" />
-            <div className="min-w-0 self-end">
-              <h2 className="font-serif text-2xl leading-tight font-bold">{title}</h2>
+        <div className="space-y-8 px-5 pb-14 md:px-7">
+          <div className="-mt-20 flex gap-5">
+            <Poster
+              key={movie.id}
+              movie={movie}
+              className="relative w-[116px] shrink-0 shadow-[0_18px_50px_-10px_rgb(0_0_0/0.9)] ring-1 ring-white/10"
+            />
+            <div className="min-w-0 self-end pb-1">
+              <h2 className="font-serif text-[26px] leading-tight font-bold">{title}</h2>
               {movie.originalTitle && movie.originalTitle !== title && (
-                <p className="mt-0.5 text-[13px] text-ash">{movie.originalTitle}</p>
+                <p className="mt-1 text-[13px] text-ash">{movie.originalTitle}</p>
               )}
-              <p className="num mt-1.5 text-[13px] text-ash">
+              <p className="num mt-2 text-[13px] text-ash">
                 {[movie.year, runtime && `${runtime} 分钟`].filter(Boolean).join('　') || '年份不详'}
               </p>
             </div>
@@ -245,7 +289,7 @@ export function DetailSheet() {
 
           <div>
             <span className="label">简介</span>
-            <p className="text-sm leading-[1.75] text-bone/90">{overview || '暂无简介。'}</p>
+            <p className="text-sm leading-[1.8] text-bone/85">{overview || '暂无简介。'}</p>
             {error && <p className="mt-2 text-[13px] text-ash">没能获取完整信息：{error}</p>}
           </div>
 
@@ -254,7 +298,7 @@ export function DetailSheet() {
           {collection && (
             <button
               onClick={() => go('series')}
-              className="flex w-full items-center justify-between rounded-md border border-line px-4 py-3 text-left text-sm hover:border-ash"
+              className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-left text-sm transition duration-200 hover:border-white/25"
             >
               <span>
                 <span className="text-ash">系列　</span>
@@ -267,11 +311,15 @@ export function DetailSheet() {
           {details && details.similar.length > 0 && (
             <div>
               <span className="label">相似影片</span>
-              <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-2">
+              <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pt-1 pb-2 md:-mx-7 md:px-7">
                 {details.similar.map((m) => (
-                  <button key={m.id} onClick={() => openDetail(m)} className="w-[92px] shrink-0 text-left">
-                    <Poster movie={m} size="w185" />
-                    <p className="mt-1.5 truncate text-[13px]">{m.title}</p>
+                  <button key={m.id} onClick={() => openDetail(m)} className="group w-[96px] shrink-0 text-left">
+                    <Poster
+                      movie={m}
+                      size="w185"
+                      className="rounded-lg ring-1 ring-white/[0.08] transition duration-300 ease-out-soft group-hover:-translate-y-1 group-hover:ring-white/30"
+                    />
+                    <p className="mt-2 truncate text-[13px]">{m.title}</p>
                     <p className="num text-xs text-dim">{m.year}</p>
                   </button>
                 ))}
@@ -279,41 +327,40 @@ export function DetailSheet() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-2 border-t border-line pt-5">
-            <a className="btn" href={doubanSearchUrl(title)} target="_blank" rel="noreferrer">
+          <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.07] pt-6">
+            <a className="btn h-10" href={doubanSearchUrl(title)} target="_blank" rel="noreferrer">
               在豆瓣打开
               <ExternalLink size={14} />
             </a>
-            <a className="btn" href={tmdbUrl(movie.id)} target="_blank" rel="noreferrer">
+            <a className="btn h-10" href={tmdbUrl(movie.id)} target="_blank" rel="noreferrer">
               TMDB
               <ExternalLink size={14} />
             </a>
             {entry &&
               (confirmRemove ? (
                 <button
-                  className="btn ml-auto border-blood text-flare"
+                  className="btn ml-auto h-10 border-flare/50 text-flare"
                   onClick={() => {
-                    remove(entry.id)
+                    removeMovie(entry.id)
                     close()
                   }}
                 >
-                  确认移出，记录会删除
+                  确认移出
                 </button>
               ) : (
-                <button className="btn btn-quiet ml-auto" onClick={() => setConfirmRemove(true)}>
+                <button className="btn btn-quiet ml-auto h-10" onClick={() => setConfirmRemove(true)}>
                   <Trash2 size={15} />
                   移出片单
                 </button>
               ))}
-            {!entry && (
-              <span className="ml-auto flex items-center gap-1 text-[13px] text-dim">
-                <Plus size={13} />
-                还没加入片单
-              </span>
-            )}
           </div>
         </div>
-      </aside>
+      </motion.aside>
     </div>
   )
+}
+
+export function DetailSheet() {
+  const movie = useUi((s) => s.detail)
+  return <AnimatePresence>{movie && <Sheet key="detail" movie={movie} />}</AnimatePresence>
 }

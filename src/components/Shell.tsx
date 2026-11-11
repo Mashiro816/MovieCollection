@@ -1,4 +1,5 @@
 import { ChartColumn, Cloud, CloudOff, Film, Layers, Rows3, Search, Settings } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useEffect, type ReactNode } from 'react'
 import { useUi, type View } from '../lib/store'
 import { cloudEnabled, useSync } from '../lib/sync'
@@ -25,7 +26,7 @@ function SyncNote() {
   return (
     <button
       onClick={() => go('settings')}
-      className={`flex items-center gap-2 text-[13px] hover:text-bone ${status === 'error' ? 'text-flare' : 'text-dim'}`}
+      className={`flex items-center gap-2 text-[13px] transition-colors hover:text-bone ${status === 'error' ? 'text-flare' : 'text-dim'}`}
     >
       <Icon size={15} />
       {text}
@@ -38,11 +39,11 @@ function SearchTrigger() {
   return (
     <button
       onClick={() => setSearchOpen(true)}
-      className="flex h-11 w-full items-center gap-3 rounded-md border border-line bg-panel px-3.5 text-left text-sm text-ash transition-colors hover:border-ash"
+      className="glass flex h-11 w-full items-center gap-3 rounded-full border px-4 text-left text-sm text-ash transition duration-200 hover:border-white/20 hover:text-bone"
     >
       <Search size={17} className="text-flare" />
       <span className="flex-1">搜索片名，添加电影</span>
-      <kbd className="hidden rounded border border-line px-1.5 font-mono text-[11px] text-dim md:inline">/</kbd>
+      <kbd className="hidden rounded-md border border-white/10 px-1.5 font-mono text-[11px] text-dim md:inline">/</kbd>
     </button>
   )
 }
@@ -65,10 +66,10 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh">
       {/* 电脑：左侧导航 */}
-      <aside className="sticky top-0 hidden h-dvh w-[208px] shrink-0 flex-col border-r border-line px-5 py-7 md:flex">
-        <button onClick={() => go('library')} className="mb-9 flex items-center gap-2.5 text-left">
-          <img src="/favicon.svg" alt="" className="h-7 w-7" />
-          <span className="font-serif text-xl font-bold tracking-wide">午夜片单</span>
+      <aside className="sticky top-0 z-20 hidden h-dvh w-[216px] shrink-0 flex-col border-r border-white/[0.06] bg-ink px-4 py-7 md:flex">
+        <button onClick={() => go('library')} className="mb-10 flex items-center gap-2.5 px-2 text-left">
+          <img src="/favicon.svg" alt="" className="h-8 w-8" />
+          <span className="font-serif text-[21px] font-bold tracking-wide">午夜片单</span>
         </button>
         <nav className="flex flex-col gap-1">
           {NAV.map(({ view: v, label, icon: Icon }) => (
@@ -76,49 +77,63 @@ export function Shell({ children }: { children: ReactNode }) {
               key={v}
               onClick={() => go(v)}
               aria-current={view === v ? 'page' : undefined}
-              className={`relative flex h-10 items-center gap-3 rounded-md px-3 text-sm transition-colors ${
-                view === v ? 'bg-raise text-bone' : 'text-ash hover:text-bone'
+              className={`relative flex h-11 items-center gap-3 rounded-xl px-3.5 text-sm transition-colors duration-200 ${
+                view === v ? 'text-bone' : 'text-ash hover:text-bone'
               }`}
             >
-              {view === v && <span className="absolute top-2.5 bottom-2.5 left-0 w-0.5 rounded bg-flare" />}
-              <Icon size={17} strokeWidth={1.75} />
-              {label}
+              {view === v && (
+                <motion.span
+                  layoutId="nav-active"
+                  className="absolute inset-0 rounded-xl border border-white/[0.07] bg-white/[0.06]"
+                  transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                />
+              )}
+              <Icon size={18} strokeWidth={1.75} className={`relative ${view === v ? 'text-flare' : ''}`} />
+              <span className="relative">{label}</span>
             </button>
           ))}
         </nav>
-        <div className="mt-auto">
+        <div className="mt-auto px-2">
           <SyncNote />
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b border-line bg-ink/90 px-4 py-3 backdrop-blur md:px-10">
+        {/* 顶栏浮在内容上方，首页的大图会从它下面透出来 */}
+        <header className="sticky top-0 z-20 bg-gradient-to-b from-ink via-ink/75 to-transparent px-4 pt-3 pb-5 md:px-10">
           <div className="flex items-center gap-3">
-            <img src="/favicon.svg" alt="午夜片单" className="h-8 w-8 md:hidden" />
+            <img src="/favicon.svg" alt="午夜片单" className="h-9 w-9 md:hidden" />
             <div className="max-w-xl flex-1">
               <SearchTrigger />
             </div>
           </div>
         </header>
-        <main className="flex-1 px-4 pt-6 pb-28 md:px-10 md:pt-9 md:pb-16">{children}</main>
+        <main className="flex-1 px-4 pt-2 pb-32 md:px-10 md:pt-4 md:pb-20">{children}</main>
       </div>
 
-      {/* 手机：底部导航 */}
+      {/* 手机：底部悬浮导航 */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-ink/95 backdrop-blur md:hidden"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className="glass fixed inset-x-3 z-20 grid grid-cols-5 rounded-2xl border shadow-float md:hidden"
+        style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         {NAV.map(({ view: v, label, icon: Icon }) => (
           <button
             key={v}
             onClick={() => go(v)}
             aria-current={view === v ? 'page' : undefined}
-            className={`flex h-14 flex-col items-center justify-center gap-0.5 text-[11px] ${
-              view === v ? 'text-flare' : 'text-ash'
+            className={`relative flex h-[58px] flex-col items-center justify-center gap-0.5 text-[11px] transition-colors duration-200 ${
+              view === v ? 'text-bone' : 'text-ash'
             }`}
           >
-            <Icon size={20} strokeWidth={1.75} />
-            {label}
+            {view === v && (
+              <motion.span
+                layoutId="tab-active"
+                className="absolute inset-1.5 rounded-xl bg-white/[0.07]"
+                transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+              />
+            )}
+            <Icon size={20} strokeWidth={1.75} className={`relative ${view === v ? 'text-flare' : ''}`} />
+            <span className="relative">{label}</span>
           </button>
         ))}
       </nav>

@@ -8,7 +8,7 @@ import { PageTitle } from './ui'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="border-t border-line py-7">
+    <section className="card mb-4 p-6 md:p-7">
       <h2 className="mb-4 font-serif text-xl font-bold">{title}</h2>
       <div className="max-w-xl">{children}</div>
     </section>

@@ -14,7 +14,8 @@ export const getKey = () => KEY
 
 export const posterUrl = (path: string | null, size: 'w185' | 'w342' | 'w500' = 'w342') =>
   path ? `${IMG}/${size}${path}` : null
-export const backdropUrl = (path: string | null) => (path ? `${IMG}/w780${path}` : null)
+export const backdropUrl = (path: string | null, size: 'w780' | 'w1280' = 'w780') =>
+  path ? `${IMG}/${size}${path}` : null
 
 export class TmdbError extends Error {}
 

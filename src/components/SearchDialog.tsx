@@ -1,13 +1,14 @@
 import { Bookmark, Check, Eye, Search, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { addMovie, useOverlay } from '../lib/actions'
 import { HORROR_GENRE_ID } from '../lib/constants'
 import { useLog, useUi } from '../lib/store'
 import { getKey, searchMovies } from '../lib/tmdb'
 import type { MovieLite } from '../lib/types'
-import { Poster } from './ui'
+import { Backdrop, Poster } from './ui'
 
-function Result({ movie }: { movie: MovieLite }) {
+function Result({ movie, index }: { movie: MovieLite; index: number }) {
   const entry = useLog((s) => s.entries[movie.id])
   const { openDetail, setSearchOpen } = useUi()
   const status = entry && !entry.deleted ? entry.status : null
@@ -18,23 +19,28 @@ function Result({ movie }: { movie: MovieLite }) {
   }
 
   return (
-    <li className="flex gap-3.5 border-b border-line py-3.5">
-      <button onClick={open} className="w-[68px] shrink-0 self-start" aria-label={`查看《${movie.title}》`}>
-        <Poster movie={movie} size="w185" />
+    <motion.li
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: Math.min(index, 8) * 0.035 }}
+      className="flex gap-4 rounded-2xl p-3 transition-colors duration-200 hover:bg-white/[0.04]"
+    >
+      <button onClick={open} className="w-[72px] shrink-0 self-start" aria-label={`查看《${movie.title}》`}>
+        <Poster movie={movie} size="w185" className="rounded-lg shadow-poster ring-1 ring-white/[0.08]" />
       </button>
-      <div className="min-w-0 flex-1">
-        <button onClick={open} className="block max-w-full text-left hover:text-flare">
-          <span className="font-medium">{movie.title}</span>
+      <div className="min-w-0 flex-1 py-0.5">
+        <button onClick={open} className="block max-w-full text-left transition-colors hover:text-flare">
+          <span className="text-[15px] font-medium">{movie.title}</span>
           <span className="num ml-2 text-[13px] text-ash">{movie.year}</span>
         </button>
         {movie.originalTitle && movie.originalTitle !== movie.title && (
           <p className="truncate text-[13px] text-dim">{movie.originalTitle}</p>
         )}
-        <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-ash">{movie.overview || '暂无中文简介'}</p>
-        <div className="mt-2.5 flex gap-2">
+        <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-ash">{movie.overview || '暂无中文简介'}</p>
+        <div className="mt-3 flex gap-2">
           {status === 'watched' ? (
-            <span className="chip border-transparent px-0 text-bone hover:border-transparent">
-              <Check size={14} className="mr-1 text-flare" />
+            <span className="flex h-8 items-center text-[13px] text-bone">
+              <Check size={14} className="mr-1.5 text-flare" />
               已在"看过"里
             </span>
           ) : (
@@ -50,8 +56,8 @@ function Result({ movie }: { movie: MovieLite }) {
                 看过
               </button>
               {status === 'wishlist' ? (
-                <span className="chip border-transparent px-0 hover:border-transparent">
-                  <Check size={14} className="mr-1 text-flare" />
+                <span className="flex h-8 items-center text-[13px] text-ash">
+                  <Check size={14} className="mr-1.5 text-flare" />
                   已在"想看"里
                 </span>
               ) : (
@@ -64,24 +70,39 @@ function Result({ movie }: { movie: MovieLite }) {
           )}
         </div>
       </div>
-    </li>
+    </motion.li>
   )
 }
 
-export function SearchDialog() {
-  const { searchOpen, setSearchOpen } = useUi()
+function Skeletons() {
+  return (
+    <div aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex gap-4 p-3">
+          <div className="skeleton aspect-[2/3] w-[72px] shrink-0" />
+          <div className="flex-1 space-y-2.5 py-1">
+            <div className="skeleton h-4 w-2/5" />
+            <div className="skeleton h-3 w-full" />
+            <div className="skeleton h-3 w-4/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Panel() {
+  const { setSearchOpen } = useUi()
   const [query, setQuery] = useState('')
   const [horrorOnly, setHorrorOnly] = useState(true)
   const [results, setResults] = useState<MovieLite[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
-  const close = () => setSearchOpen(false)
-  useOverlay(searchOpen, close)
+  const close = useCallback(() => setSearchOpen(false), [setSearchOpen])
+  useOverlay(true, close)
 
-  useEffect(() => {
-    if (searchOpen) inputRef.current?.focus()
-  }, [searchOpen])
+  useEffect(() => inputRef.current?.focus(), [])
 
   // 停止输入 350 毫秒后再发请求
   useEffect(() => {
@@ -89,6 +110,7 @@ export function SearchDialog() {
     if (!q) {
       setResults(null)
       setError('')
+      setLoading(false)
       return
     }
     let alive = true
@@ -109,78 +131,92 @@ export function SearchDialog() {
     }
   }, [query])
 
-  if (!searchOpen) return null
-
   const horror = results?.filter((m) => m.genreIds.includes(HORROR_GENRE_ID)) ?? []
   const shown = horrorOnly ? horror : (results ?? [])
   const hidden = (results?.length ?? 0) - horror.length
   const noKey = !getKey()
 
   return (
-    <div className="anim-fade fixed inset-0 z-40 bg-black/75 backdrop-blur-sm" onClick={close}>
-      <div
+    <div className="fixed inset-0 z-40">
+      <Backdrop onClick={close} />
+      <motion.div
         role="dialog"
         aria-modal="true"
         aria-label="搜索电影"
-        onClick={(e) => e.stopPropagation()}
-        className="mx-auto flex h-dvh w-full max-w-2xl flex-col bg-panel md:mt-[8vh] md:h-auto md:max-h-[80vh] md:rounded-lg md:border md:border-line"
+        initial={{ opacity: 0, y: -14, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -8, scale: 0.985 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="relative mx-auto flex h-dvh w-full max-w-2xl flex-col bg-panel md:mt-[9vh] md:h-auto md:max-h-[78vh] md:rounded-3xl md:border md:border-white/10 md:shadow-float"
       >
-        <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-          <Search size={18} className="shrink-0 text-flare" />
+        <div className="flex items-center gap-3 border-b border-white/[0.07] px-5 py-3.5">
+          <Search size={19} className="shrink-0 text-flare" />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="输入片名，中文英文都可以"
-            className="h-10 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-dim"
+            className="h-10 min-w-0 flex-1 bg-transparent text-[17px] outline-none placeholder:text-dim"
             enterKeyHint="search"
           />
-          <button onClick={close} className="btn btn-quiet h-9 px-2" aria-label="关闭搜索">
+          <button onClick={close} className="btn btn-quiet h-9 w-9 rounded-full px-0" aria-label="关闭搜索">
             <X size={19} />
           </button>
         </div>
 
-        <div className="flex items-center justify-between px-4 py-2.5 text-[13px] text-ash">
-          <label className="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              checked={horrorOnly}
-              onChange={(e) => setHorrorOnly(e.target.checked)}
-              className="h-4 w-4 accent-[#c8102e]"
-            />
+        <div className="flex items-center justify-between px-5 py-3 text-[13px] text-ash">
+          <button
+            role="switch"
+            aria-checked={horrorOnly}
+            onClick={() => setHorrorOnly(!horrorOnly)}
+            className="flex items-center gap-2.5"
+          >
+            <span
+              className={`flex h-5 w-9 items-center rounded-full p-0.5 transition-colors duration-200 ${horrorOnly ? 'bg-blood' : 'bg-white/15'}`}
+            >
+              <motion.span
+                layout
+                transition={{ type: 'spring', stiffness: 600, damping: 34 }}
+                className={`h-4 w-4 rounded-full bg-white ${horrorOnly ? 'ml-auto' : ''}`}
+              />
+            </span>
             只看恐怖片
-          </label>
-          {loading && <span>搜索中</span>}
+          </button>
+          {loading && results !== null && <span>搜索中</span>}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-5">
           {noKey ? (
-            <p className="py-8 text-sm leading-relaxed text-ash">
+            <p className="px-3 py-8 text-sm leading-relaxed text-ash">
               还没有配置 TMDB key，搜不到电影。在项目根目录的 <code className="num text-bone">.env.local</code> 里填写{' '}
               <code className="num text-bone">VITE_TMDB_KEY</code>，然后重启。
             </p>
           ) : error ? (
-            <p className="py-8 text-sm text-flare">{error}</p>
+            <p className="px-3 py-8 text-sm text-flare">{error}</p>
           ) : results === null ? (
-            <p className="py-8 text-sm text-dim">结果会显示海报、年份和简介，可以直接标为看过或想看。</p>
+            loading ? (
+              <Skeletons />
+            ) : (
+              <p className="px-3 py-8 text-sm text-dim">结果会显示海报、年份和简介，可以直接标为看过或想看。</p>
+            )
           ) : shown.length === 0 && !loading ? (
-            <div className="py-8 text-sm text-ash">
+            <div className="px-3 py-8 text-sm text-ash">
               <p>没有找到{horrorOnly ? '恐怖类型的' : ''}结果。</p>
               {horrorOnly && hidden > 0 && (
-                <button className="mt-2 text-bone underline" onClick={() => setHorrorOnly(false)}>
+                <button className="mt-2 text-bone underline underline-offset-4" onClick={() => setHorrorOnly(false)}>
                   显示其他类型的 {hidden} 个结果
                 </button>
               )}
             </div>
           ) : (
             <ul>
-              {shown.map((m) => (
-                <Result key={m.id} movie={m} />
+              {shown.map((m, i) => (
+                <Result key={m.id} movie={m} index={i} />
               ))}
               {horrorOnly && hidden > 0 && (
-                <li className="pt-4 text-[13px] text-dim">
+                <li className="px-3 pt-4 text-[13px] text-dim">
                   另有 {hidden} 个其他类型的结果。
-                  <button className="ml-1 text-ash underline" onClick={() => setHorrorOnly(false)}>
+                  <button className="ml-1 text-ash underline underline-offset-4" onClick={() => setHorrorOnly(false)}>
                     全部显示
                   </button>
                 </li>
@@ -188,7 +224,12 @@ export function SearchDialog() {
             </ul>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   )
+}
+
+export function SearchDialog() {
+  const open = useUi((s) => s.searchOpen)
+  return <AnimatePresence>{open && <Panel key="search" />}</AnimatePresence>
 }

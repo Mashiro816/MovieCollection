@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { toast } from 'sonner'
 import { useLog } from './store'
 import { getKey, getMovie } from './tmdb'
 import type { MovieLite, Status } from './types'
@@ -7,6 +8,7 @@ import type { MovieLite, Status } from './types'
 export function addMovie(movie: MovieLite, status: Status) {
   const { add, enrich, entries } = useLog.getState()
   add(movie, status)
+  if (status === 'wishlist') toast('已加入想看', { description: movie.title })
   if (!entries[movie.id]?.enriched && getKey()) {
     getMovie(movie.id)
       .then(enrich)
@@ -20,7 +22,10 @@ export function addMovie(movie: MovieLite, status: Status) {
 export function useOverlay(open: boolean, onClose: () => void) {
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => {
+      // 下拉菜单开着时，Esc 只关菜单，不关弹层
+      if (e.key === 'Escape' && !document.querySelector('[role="listbox"]')) onClose()
+    }
     document.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -29,4 +34,15 @@ export function useOverlay(open: boolean, onClose: () => void) {
       document.body.style.overflow = prev
     }
   }, [open, onClose])
+}
+
+/** 移出片单，并给一个撤销的机会 */
+export function removeMovie(id: number) {
+  const { entries, remove, patch } = useLog.getState()
+  const title = entries[id]?.title ?? ''
+  remove(id)
+  toast('已移出片单', {
+    description: title,
+    action: { label: '撤销', onClick: () => patch(id, { deleted: false }) },
+  })
 }

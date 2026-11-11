@@ -32,9 +32,9 @@ function SeriesBlock({ id, name, mine }: { id: number; name: string; mine: Entry
   const done = info != null && watched === parts.length
 
   return (
-    <section className="border-t border-line py-6">
+    <section className="card mb-4 px-5 py-5 md:px-7 md:py-6">
       <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <h2 className="font-serif text-xl font-bold">{info?.name ?? name}</h2>
+        <h2 className="font-serif text-[22px] font-bold">{info?.name ?? name}</h2>
         <p className="num text-sm text-ash">
           已看 <span className={done ? 'text-flare' : 'text-bone'}>{watched}</span>
           {info ? ` / ${parts.length}` : ''}
@@ -47,32 +47,36 @@ function SeriesBlock({ id, name, mine }: { id: number; name: string; mine: Entry
           {parts.map((p) => (
             <span
               key={p.id}
-              className={`h-1 flex-1 rounded-full ${byId.get(p.id)?.status === 'watched' ? 'bg-flare' : 'bg-line'}`}
+              className={`h-1 flex-1 rounded-full ${byId.get(p.id)?.status === 'watched' ? 'bg-flare shadow-[0_0_10px_rgb(255_64_87/0.7)]' : 'bg-white/10'}`}
             />
           ))}
         </div>
       )}
       {error && <p className="mb-3 text-[13px] text-ash">没能获取完整系列：{error}</p>}
-      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+      <div className="-mx-5 flex gap-3.5 overflow-x-auto px-5 pt-1 pb-2 md:-mx-7 md:px-7">
         {parts.map((p) => {
           const e = byId.get(p.id)
           const seen = e?.status === 'watched'
           return (
-            <button key={p.id} onClick={() => openDetail(e ?? p)} className="w-[96px] shrink-0 text-left md:w-[112px]">
-              <div className="relative">
-                <Poster movie={p} size="w185" className={seen ? '' : 'opacity-40 grayscale'} />
+            <button key={p.id} onClick={() => openDetail(e ?? p)} className="group w-[96px] shrink-0 text-left md:w-[116px]">
+              <div className="relative overflow-hidden rounded-lg shadow-poster ring-1 ring-white/[0.08] transition duration-300 ease-out-soft group-hover:-translate-y-1 group-hover:ring-white/30">
+                <Poster
+                  movie={p}
+                  size="w185"
+                  className={`rounded-lg transition duration-500 ${seen ? '' : 'opacity-35 grayscale group-hover:opacity-70 group-hover:grayscale-0'}`}
+                />
                 {e?.tier && (
                   <span className="absolute top-1 left-1">
                     <TierBadge tier={e.tier} size="sm" />
                   </span>
                 )}
                 {e?.status === 'wishlist' && (
-                  <span className="absolute top-1 left-1 rounded-[3px] bg-ink/80 p-1 text-bone" title="在想看片单里">
+                  <span className="absolute top-1 left-1 rounded-md bg-ink/80 p-1 text-bone backdrop-blur" title="在想看片单里">
                     <Bookmark size={12} />
                   </span>
                 )}
               </div>
-              <p className={`mt-1.5 truncate text-[13px] ${seen ? 'text-bone' : 'text-ash'}`}>{p.title}</p>
+              <p className={`mt-2 truncate text-[13px] ${seen ? 'text-bone' : 'text-ash'}`}>{p.title}</p>
               <p className="num text-xs text-dim">{p.year}</p>
             </button>
           )
