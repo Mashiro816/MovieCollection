@@ -120,3 +120,13 @@
     animation: none;
   }
 }
+
+/* 轮盘转动时指针轻微摆动，像被格子拨动 */
+@keyframes pointer-tick {
+  from {
+    transform: rotate(-9deg);
+  }
+  to {
+    transform: rotate(5deg);
+  }
+}

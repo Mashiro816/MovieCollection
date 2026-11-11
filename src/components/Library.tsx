@@ -1,6 +1,7 @@
 import { Dices, LayoutGrid, Orbit } from 'lucide-react'
-import { motion } from 'motion/react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { toast } from 'sonner'
 import { TIERS, tierOf, tierRank } from '../lib/constants'
 import { useEntries, useUi } from '../lib/store'
 import { backdropUrl } from '../lib/tmdb'
@@ -108,53 +109,191 @@ function GroupTile({ group, still }: { group: Group; still: boolean }) {
   )
 }
 
-/** 首页顶部的大图：最近看的一部。顶栏浮在它上面 */
-function Hero({ entry }: { entry: Entry }) {
+interface Slide {
+  entry: Entry
+  label: string
+}
+
+/** 固定种子的随机数：同一次打开期间顺序不变，不会因为你改了某条记录就重新洗牌 */
+function seededRandom(seed: number) {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/**
+ * 顶部大图轮播哪些电影：最近看的一部，加上随机的几部 S 级和几部吓人指数 4 到 5 的。
+ * 只取有剧照的；同一部不重复出现；最后整体打乱顺序。
+ */
+function pickSlides(entries: Entry[], seed: number): Slide[] {
+  const random = seededRandom(seed)
+  const shuffle = <T,>(list: T[]) =>
+    list
+      .map((item) => ({ item, key: random() }))
+      .sort((x, y) => x.key - y.key)
+      .map((x) => x.item)
+
+  const watched = sortEntries(
+    entries.filter((e) => e.status === 'watched' && e.backdropPath),
+    'recent',
+    'watched',
+  )
+  if (watched.length === 0) return []
+  const slides: Slide[] = [{ entry: watched[0], label: '最近看的' }]
+  const used = new Set([watched[0].id])
+  const add = (list: Entry[], label: (e: Entry) => string) => {
+    for (const e of shuffle(list.filter((x) => !used.has(x.id))).slice(0, 2)) {
+      used.add(e.id)
+      slides.push({ entry: e, label: label(e) })
+    }
+  }
+  add(
+    watched.filter((e) => e.tier === 'S'),
+    () => '你评的噩梦级',
+  )
+  add(
+    watched.filter((e) => e.scare >= 4),
+    (e) => `吓人指数 ${e.scare}`,
+  )
+  return shuffle(slides)
+}
+
+const SLIDE_SECONDS = 7
+
+/** 首页顶部的大图轮播。顶栏浮在它上面 */
+function Hero({ slides }: { slides: Slide[] }) {
   const openDetail = useUi((s) => s.openDetail)
+  const detailOpen = useUi((s) => s.detail != null)
+  const [index, setIndex] = useState(0)
+  const [hover, setHover] = useState(false)
+  const swiped = useRef(false)
+  const [still] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+
+  const count = slides.length
+  const current = slides[Math.min(index, count - 1)]
+  const go = (step: number) => setIndex((i) => (i + step + count) % count)
+  // 鼠标停在上面、打开了详情、或系统要求减少动态效果时，不自动切换
+  const playing = count > 1 && !hover && !detailOpen && !still
+
+  useEffect(() => {
+    if (!playing) return
+    const timer = setTimeout(() => setIndex((i) => (i + 1) % count), SLIDE_SECONDS * 1000)
+    return () => clearTimeout(timer)
+  }, [playing, index, count])
+
+  // 提前加载其余几张剧照，切换时不会先看到空白
+  useEffect(() => {
+    slides.forEach((s) => {
+      const src = backdropUrl(s.entry.backdropPath, 'w1280')
+      if (src) new Image().src = src
+    })
+  }, [slides])
+
+  const { entry, label } = current
   const src = backdropUrl(entry.backdropPath, 'w1280')
   const tier = tierOf(entry.tier)
+
   return (
-    <button
-      onClick={() => openDetail(entry)}
-      className="group relative -mx-4 -mt-[84px] mb-8 block h-[340px] w-[calc(100%+2rem)] overflow-hidden text-left md:-mx-10 md:-mt-[92px] md:mb-10 md:h-[420px] md:w-[calc(100%+5rem)]"
+    <motion.div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      // 手机上左右滑动切换
+      onPan={(_, info) => {
+        if (Math.abs(info.offset.x) > 12) swiped.current = true
+      }}
+      onPanEnd={(_, info) => {
+        if (count > 1 && Math.abs(info.offset.x) > 50) go(info.offset.x < 0 ? 1 : -1)
+        setTimeout(() => (swiped.current = false), 60)
+      }}
+      className="group relative -mx-4 -mt-[84px] mb-8 h-[340px] touch-pan-y overflow-hidden md:-mx-10 md:-mt-[92px] md:mb-10 md:h-[420px]"
     >
-      {src && (
-        <motion.img
-          key={src}
-          src={src}
-          alt=""
-          initial={{ opacity: 0, scale: 1.06 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute inset-0 h-full w-full object-cover object-[center_25%] transition-transform duration-[1.2s] ease-out-soft group-hover:scale-[1.03]"
-        />
-      )}
+      <AnimatePresence initial={false}>
+        {src && (
+          <motion.img
+            key={entry.id}
+            src={src}
+            alt=""
+            initial={{ opacity: 0, scale: 1.06 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ opacity: { duration: 0.9 }, scale: { duration: SLIDE_SECONDS + 1, ease: 'linear' } }}
+            className="absolute inset-0 h-full w-full object-cover object-[center_25%]"
+          />
+        )}
+      </AnimatePresence>
       {/* 两层渐变：底部融进页面，左侧压暗保证文字可读 */}
       <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/25" />
       <div className="absolute inset-0 bg-gradient-to-r from-ink/85 via-ink/20 to-transparent" />
 
-      <div className="absolute inset-x-4 bottom-6 flex items-end gap-5 md:inset-x-10 md:bottom-9 md:gap-7">
-        <Poster
-          movie={entry}
-          className="hidden w-[132px] shrink-0 shadow-[0_18px_50px_-10px_rgb(0_0_0/0.9)] ring-1 ring-white/15 md:block"
-        />
-        <div className="min-w-0">
-          <p className="mb-2 text-[13px] text-bone/70">最近看的</p>
-          <h2 className="max-w-2xl font-serif text-[34px] leading-[1.15] font-bold md:text-[50px]">{entry.title}</h2>
-          <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-            {tier && (
-              <span className="flex items-center gap-2">
-                <TierBadge tier={entry.tier} />
-                <span style={{ color: tier.color }}>{tier.name}</span>
-              </span>
-            )}
-            {entry.scare > 0 && <Skulls value={entry.scare} size={15} />}
-            <span className="num text-bone/60">{[entry.year, entry.watchedAt].filter(Boolean).join('　看于 ')}</span>
+      {/* 整张图都可以点开详情 */}
+      <button
+        onClick={() => !swiped.current && openDetail(entry)}
+        className="absolute inset-0 w-full cursor-pointer"
+        aria-label={`查看《${entry.title}》`}
+      />
+
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={entry.id}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          className="pointer-events-none absolute inset-x-4 bottom-9 flex items-end gap-5 md:inset-x-10 md:bottom-11 md:gap-7"
+        >
+          <Poster
+            movie={entry}
+            className="hidden w-[132px] shrink-0 shadow-[0_18px_50px_-10px_rgb(0_0_0/0.9)] ring-1 ring-white/15 md:block"
+          />
+          <div className="min-w-0">
+            <p className="mb-2 text-[13px] text-bone/70">{label}</p>
+            <h2 className="max-w-2xl font-serif text-[34px] leading-[1.15] font-bold md:text-[50px]">{entry.title}</h2>
+            <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+              {tier && (
+                <span className="flex items-center gap-2">
+                  <TierBadge tier={entry.tier} />
+                  <span style={{ color: tier.color }}>{tier.name}</span>
+                </span>
+              )}
+              {entry.scare > 0 && <Skulls value={entry.scare} size={15} />}
+              <span className="num text-bone/60">{[entry.year, entry.watchedAt].filter(Boolean).join('　看于 ')}</span>
+            </div>
+            {entry.note && <p className="mt-3 max-w-xl truncate font-serif text-[15px] text-bone/80">"{entry.note}"</p>}
           </div>
-          {entry.note && <p className="mt-3 max-w-xl truncate font-serif text-[15px] text-bone/80">"{entry.note}"</p>}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* 进度条：每张一段，当前这段在停留时间内慢慢填满 */}
+      {count > 1 && (
+        <div className="absolute inset-x-4 bottom-3 flex gap-1.5 md:inset-x-10 md:bottom-4 md:max-w-[260px]">
+          {slides.map((s, i) => (
+            <button
+              key={s.entry.id}
+              onClick={() => setIndex(i)}
+              aria-label={`第 ${i + 1} 张：${s.entry.title}`}
+              aria-current={i === index}
+              className="relative h-5 flex-1"
+            >
+              <span className="absolute inset-x-0 top-2 h-[3px] overflow-hidden rounded-full bg-white/20">
+                {i === index && (
+                  <motion.span
+                    key={`${index}-${playing}`}
+                    className="block h-full rounded-full bg-bone"
+                    initial={{ width: playing ? '0%' : '100%' }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: playing ? SLIDE_SECONDS : 0, ease: 'linear' }}
+                  />
+                )}
+              </span>
+            </button>
+          ))}
         </div>
-      </div>
-    </button>
+      )}
+    </motion.div>
   )
 }
 
@@ -214,15 +353,14 @@ export function Library() {
     }),
     [entries],
   )
-  const latest = useMemo(
-    () =>
-      sortEntries(
-        entries.filter((e) => e.status === 'watched' && e.backdropPath),
-        'recent',
-        'watched',
-      )[0],
-    [entries],
-  )
+  // 轮播的内容只跟"哪些电影符合条件"有关：改短评、换标签不会让它重新洗牌
+  const [seed] = useState(() => Math.floor(Math.random() * 2 ** 32))
+  const slideKey = entries
+    .filter((e) => e.status === 'watched' && e.backdropPath)
+    .map((e) => `${e.id}${e.tier ?? ''}${e.scare}${e.watchedAt ?? ''}`)
+    .join(',')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const slides = useMemo(() => pickSlides(entries, seed), [slideKey, seed])
   const tags = useMemo(() => {
     const n = new Map<string, number>()
     inTab.forEach((e) => e.tags.forEach((t) => n.set(t, (n.get(t) ?? 0) + 1)))
@@ -250,7 +388,7 @@ export function Library() {
   return (
     <div>
       {/* 环形展台本身就是主角，这时不再显示顶部大图 */}
-      {latest && view === 'grid' && <Hero entry={latest} />}
+      {slides.length > 0 && view === 'grid' && <Hero slides={slides} />}
 
       {/* 两个片单的切换，同时就是页面标题 */}
       <div className="mb-6 flex items-end gap-7" role="tablist">
@@ -277,10 +415,17 @@ export function Library() {
             )}
           </button>
         ))}
-        {tab === 'wishlist' && counts.wishlist > 0 && (
-          <button onClick={() => setTonightOpen(true)} className="btn btn-primary mb-2.5 ml-auto">
+        {tab === 'wishlist' && (
+          <button
+            onClick={() =>
+              counts.wishlist === 0
+                ? toast('暂无想看的电影', { description: '先搜索片名，把想看的加进来' })
+                : setTonightOpen(true)
+            }
+            className="btn btn-primary mb-2.5 ml-auto"
+          >
             <Dices size={17} />
-            今晚看什么
+            随机推荐
           </button>
         )}
       </div>
