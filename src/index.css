@@ -1,0 +1,118 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/jetbrains-mono';
+
+/* 设计变量：改颜色和字体只需要改这里 */
+@theme {
+  --color-ink: #0a090c; /* 页面底色 */
+  --color-panel: #131116; /* 面板 */
+  --color-raise: #1c1920; /* 面板上的控件 */
+  --color-line: #2c2831; /* 分隔线 */
+  --color-bone: #ebe5df; /* 正文 */
+  --color-ash: #9a929c; /* 次要文字 */
+  --color-dim: #615a66; /* 最弱的文字、未激活的图标 */
+  --color-blood: #c8102e; /* 强调色（按钮底色） */
+  --color-flare: #ff4057; /* 强调色（深色底上的文字和图标） */
+
+  --font-sans: 'PingFang SC', 'HarmonyOS Sans SC', 'MiSans', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, sans-serif;
+  --font-serif: 'Songti SC', 'Noto Serif CJK SC', 'Source Han Serif SC', 'STSong', 'SimSun', serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+@layer base {
+  html {
+    background: var(--color-ink);
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-ink font-sans text-bone antialiased;
+    font-size: 15px;
+    line-height: 1.6;
+    /* 顶部一点很淡的暗红，像放映厅门缝里的光 */
+    background-image: radial-gradient(90% 320px at 50% -120px, rgb(200 16 46 / 0.13), transparent);
+    background-repeat: no-repeat;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-flare);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: rgb(200 16 46 / 0.55);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line) transparent;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line px-4 text-sm text-bone transition-colors hover:border-ash disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply border-blood bg-blood font-medium text-white hover:border-flare hover:bg-flare;
+  }
+  .btn-quiet {
+    @apply border-transparent text-ash hover:border-transparent hover:text-bone;
+  }
+  .field {
+    @apply h-10 w-full rounded-md border border-line bg-raise px-3 text-sm text-bone placeholder:text-dim;
+  }
+  .chip {
+    @apply inline-flex h-8 items-center rounded-full border border-line px-3 text-[13px] text-ash transition-colors hover:border-ash hover:text-bone;
+  }
+  .chip-on {
+    @apply border-bone bg-bone text-ink hover:border-bone hover:text-ink;
+  }
+  .label {
+    @apply mb-2 block text-[13px] text-ash;
+  }
+  .num {
+    @apply font-mono tabular-nums;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.anim-sheet {
+  animation: rise-in 0.22s ease-out;
+}
+@media (min-width: 768px) {
+  .anim-sheet {
+    animation: sheet-in 0.22s ease-out;
+  }
+}
+.anim-rise {
+  animation: rise-in 0.2s ease-out;
+}
+.anim-fade {
+  animation: fade-in 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-sheet,
+  .anim-rise,
+  .anim-fade {
+    animation: none;
+  }
+}
