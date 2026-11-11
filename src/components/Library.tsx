@@ -1,10 +1,11 @@
-import { Dices, Skull } from 'lucide-react'
+import { Dices, LayoutGrid, Orbit, Skull } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { TIERS, tierOf, tierRank } from '../lib/constants'
 import { useEntries, useUi } from '../lib/store'
 import { backdropUrl } from '../lib/tmdb'
 import type { Entry, Status, TierId } from '../lib/types'
+import { Ring } from './Ring'
 import { Empty, Poster, Select, Skulls, TierBadge } from './ui'
 
 type Sort = 'recent' | 'tier' | 'scare' | 'year' | 'runtime'
@@ -93,7 +94,10 @@ export function MovieCard({ entry, index = 0 }: { entry: Entry; index?: number }
       className="group block text-left"
     >
       <div className="relative overflow-hidden rounded-xl shadow-poster ring-1 ring-white/[0.08] transition duration-300 ease-out-soft group-hover:-translate-y-1 group-hover:ring-white/30">
-        <Poster movie={entry} className="rounded-none transition-transform duration-500 ease-out-soft group-hover:scale-[1.05]" />
+        <Poster
+          movie={entry}
+          className="rounded-none transition-transform duration-500 ease-out-soft group-hover:scale-[1.05]"
+        />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/45 to-transparent" />
         {entry.tier && (
           <span className="absolute top-2 left-2">
@@ -118,7 +122,7 @@ export function MovieCard({ entry, index = 0 }: { entry: Entry; index?: number }
 
 export function Library() {
   const entries = useEntries()
-  const { libraryTab: tab, setLibraryTab, setSearchOpen, setTonightOpen } = useUi()
+  const { libraryTab: tab, setLibraryTab, libraryView: view, setLibraryView, setSearchOpen, setTonightOpen } = useUi()
   const [tier, setTier] = useState<TierId | null>(null)
   const [tag, setTag] = useState('')
   const [sort, setSort] = useState<Sort>('recent')
@@ -148,9 +152,7 @@ export function Library() {
 
   const activeSort = SORTS[tab].some((s) => s.value === sort) ? sort : 'recent'
   const shown = useMemo(() => {
-    const list = inTab.filter(
-      (e) => (!tier || tab !== 'watched' || e.tier === tier) && (!tag || e.tags.includes(tag)),
-    )
+    const list = inTab.filter((e) => (!tier || tab !== 'watched' || e.tier === tier) && (!tag || e.tags.includes(tag)))
     return sortEntries(list, activeSort, tab)
   }, [inTab, tier, tag, activeSort, tab])
 
@@ -162,7 +164,8 @@ export function Library() {
 
   return (
     <div>
-      {latest && <Hero entry={latest} />}
+      {/* 环形展台本身就是主角，这时不再显示顶部大图 */}
+      {latest && view === 'grid' && <Hero entry={latest} />}
 
       {/* 两个片单的切换，同时就是页面标题 */}
       <div className="mb-6 flex items-end gap-7" role="tablist">
@@ -208,7 +211,7 @@ export function Library() {
         </Empty>
       ) : (
         <>
-          <div className="-mx-4 mb-6 flex items-center gap-2.5 overflow-x-auto px-4 py-1 md:mx-0 md:flex-wrap md:px-0 [&>*]:shrink-0">
+          <div className="mb-6 flex flex-wrap items-center gap-2.5">
             {tab === 'watched' && (
               <div className="flex gap-1.5" aria-label="按评级筛选">
                 {TIERS.map((t) => (
@@ -221,7 +224,11 @@ export function Library() {
                     style={
                       tier === t.id
                         ? { background: t.color, borderColor: t.color, color: '#09080b' }
-                        : { borderColor: 'rgb(255 255 255 / 0.1)', background: 'rgb(255 255 255 / 0.04)', color: t.color }
+                        : {
+                            borderColor: 'rgb(255 255 255 / 0.1)',
+                            background: 'rgb(255 255 255 / 0.04)',
+                            color: t.color,
+                          }
                     }
                   >
                     {t.id}
@@ -232,9 +239,13 @@ export function Library() {
             {tags.length > 0 && (
               <Select
                 label="按子类型筛选"
+                className="order-3 md:order-none"
                 value={tag}
                 onChange={setTag}
-                options={[{ value: '', label: '全部子类型' }, ...tags.map(([t, n]) => ({ value: t, label: `${t}（${n}）` }))]}
+                options={[
+                  { value: '', label: '全部子类型' },
+                  ...tags.map(([t, n]) => ({ value: t, label: `${t}（${n}）` })),
+                ]}
               />
             )}
             <Select
@@ -242,12 +253,47 @@ export function Library() {
               value={activeSort}
               onChange={(v) => setSort(v as Sort)}
               options={SORTS[tab]}
-              className="md:ml-auto"
+              className="order-3 md:order-none md:ml-auto"
             />
+            <div
+              className="order-2 ml-auto flex rounded-full border border-white/10 bg-white/[0.04] p-0.5 md:order-last md:ml-0"
+              role="group"
+              aria-label="展示方式"
+            >
+              {(
+                [
+                  { value: 'grid', label: '海报墙', icon: LayoutGrid },
+                  { value: 'ring', label: '环形展台', icon: Orbit },
+                ] as const
+              ).map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setLibraryView(value)}
+                  aria-pressed={view === value}
+                  aria-label={label}
+                  title={label}
+                  className={`relative flex h-8 w-10 items-center justify-center rounded-full transition-colors duration-200 ${
+                    view === value ? 'text-ink' : 'text-ash hover:text-bone'
+                  }`}
+                >
+                  {view === value && (
+                    <motion.span
+                      layoutId="library-view"
+                      className="absolute inset-0 rounded-full bg-bone"
+                      transition={{ type: 'spring', stiffness: 460, damping: 36 }}
+                    />
+                  )}
+                  <Icon size={16} className="relative" />
+                </button>
+              ))}
+            </div>
           </div>
 
           {shown.length === 0 ? (
             <p className="py-10 text-sm text-ash">没有符合筛选条件的电影。</p>
+          ) : view === 'ring' ? (
+            // 筛选或排序变了就重新开始，回到第一张
+            <Ring key={`${tab}-${tier}-${tag}-${activeSort}`} entries={shown} />
           ) : (
             <div
               key={tab}

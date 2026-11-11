@@ -70,10 +70,6 @@ export const CONTEXT_OPTIONS: {
     { value: 'solo', label: '一个人' },
     { value: 'friends', label: '和朋友' },
   ],
-  time: [
-    { value: 'night', label: '深夜' },
-    { value: 'day', label: '白天' },
-  ],
   place: [
     { value: 'cinema', label: '影院' },
     { value: 'home', label: '在家' },

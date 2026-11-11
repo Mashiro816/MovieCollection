@@ -48,7 +48,7 @@ export const useLog = create<LogState>()(
                 scare: 0,
                 watchedAt: null,
                 note: '',
-                context: { company: null, time: null, place: null },
+                context: { company: null, place: null },
                 addedAt: now(),
                 updatedAt: now(),
               }
@@ -125,15 +125,28 @@ export function useEntry(id: number | undefined): Entry | null {
 /* ---------- 界面状态（不保存） ---------- */
 
 export type View = 'library' | 'tiers' | 'series' | 'stats' | 'settings'
+export type LibraryView = 'grid' | 'ring'
+
+const VIEW_KEY = 'midnight-log-view'
+function readView(): LibraryView {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'ring' ? 'ring' : 'grid'
+  } catch {
+    return 'grid'
+  }
+}
 
 interface UiState {
   view: View
   libraryTab: Status
+  /** 片单的展示方式：海报墙或环形展台。记在浏览器里，下次打开还是上次选的 */
+  libraryView: LibraryView
   detail: MovieLite | null
   searchOpen: boolean
   tonightOpen: boolean
   go: (view: View) => void
   setLibraryTab: (tab: Status) => void
+  setLibraryView: (view: LibraryView) => void
   openDetail: (movie: MovieLite | null) => void
   setSearchOpen: (open: boolean) => void
   setTonightOpen: (open: boolean) => void
@@ -142,6 +155,7 @@ interface UiState {
 export const useUi = create<UiState>()((set) => ({
   view: 'library',
   libraryTab: 'watched',
+  libraryView: readView(),
   detail: null,
   searchOpen: false,
   tonightOpen: false,
@@ -150,6 +164,14 @@ export const useUi = create<UiState>()((set) => ({
     set({ view, detail: null })
   },
   setLibraryTab: (libraryTab) => set({ libraryTab }),
+  setLibraryView: (libraryView) => {
+    try {
+      localStorage.setItem(VIEW_KEY, libraryView)
+    } catch {
+      /* 存不了就只在本次打开期间生效 */
+    }
+    set({ libraryView })
+  },
   openDetail: (detail) => set({ detail }),
   setSearchOpen: (searchOpen) => set({ searchOpen }),
   setTonightOpen: (tonightOpen) => set({ tonightOpen }),

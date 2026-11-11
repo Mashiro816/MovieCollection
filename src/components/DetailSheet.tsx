@@ -57,7 +57,7 @@ function WatchedForm({ entry }: { entry: Entry }) {
       </div>
 
       <div>
-        <span className="label">吓人指数（和评级分开记：很吓人不等于好看）</span>
+        <span className="label">吓人指数</span>
         <Skulls value={entry.scare} onChange={(scare) => patch(entry.id, { scare })} />
       </div>
 

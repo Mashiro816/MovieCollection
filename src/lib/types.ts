@@ -4,7 +4,6 @@ export type Status = 'watched' | 'wishlist'
 /** 观影方式，每一项都可以不填 */
 export interface WatchContext {
   company: 'solo' | 'friends' | null
-  time: 'night' | 'day' | null
   place: 'cinema' | 'home' | null
 }
 

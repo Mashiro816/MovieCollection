@@ -115,7 +115,7 @@ function Backup() {
     )
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `午夜片单-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `午夜时光-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(a.href)
   }
@@ -132,7 +132,7 @@ function Backup() {
       setMsg(`已导入 ${valid.length} 条。同一部电影保留较新的一份记录`)
       void syncAll()
     } catch {
-      setMsg('这个文件不是午夜片单导出的备份')
+      setMsg('这个文件不是午夜时光导出的备份')
     }
   }
 

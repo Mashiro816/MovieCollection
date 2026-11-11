@@ -69,7 +69,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <aside className="sticky top-0 z-20 hidden h-dvh w-[216px] shrink-0 flex-col border-r border-white/[0.06] bg-ink px-4 py-7 md:flex">
         <button onClick={() => go('library')} className="mb-10 flex items-center gap-2.5 px-2 text-left">
           <img src="/favicon.svg" alt="" className="h-8 w-8" />
-          <span className="font-serif text-[21px] font-bold tracking-wide">午夜片单</span>
+          <span className="font-serif text-[21px] font-bold tracking-wide">午夜时光</span>
         </button>
         <nav className="flex flex-col gap-1">
           {NAV.map(({ view: v, label, icon: Icon }) => (
@@ -102,7 +102,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {/* 顶栏浮在内容上方，首页的大图会从它下面透出来 */}
         <header className="sticky top-0 z-20 bg-gradient-to-b from-ink via-ink/75 to-transparent px-4 pt-3 pb-5 md:px-10">
           <div className="flex items-center gap-3">
-            <img src="/favicon.svg" alt="午夜片单" className="h-9 w-9 md:hidden" />
+            <img src="/favicon.svg" alt="午夜时光" className="h-9 w-9 md:hidden" />
             <div className="max-w-xl flex-1">
               <SearchTrigger />
             </div>

@@ -25,8 +25,8 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icon-192.png'],
       manifest: {
-        name: '午夜片单',
-        short_name: '午夜片单',
+        name: '午夜时光',
+        short_name: '午夜时光',
         description: '记录看过和想看的恐怖电影',
         lang: 'zh-CN',
         display: 'standalone',

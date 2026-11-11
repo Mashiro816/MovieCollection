@@ -1,4 +1,4 @@
--- 午夜片单的数据表。在 Supabase 后台的 SQL Editor 里整段粘贴，运行一次即可。
+-- 午夜时光的数据表。在 Supabase 后台的 SQL Editor 里整段粘贴，运行一次即可。
 
 create table if not exists public.entries (
   user_id    uuid        not null default auth.uid() references auth.users (id) on delete cascade,

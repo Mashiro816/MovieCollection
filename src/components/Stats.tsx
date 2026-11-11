@@ -135,7 +135,7 @@ export function Stats() {
         </Block>
 
         <Block title="怎么看的">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
             {(Object.keys(CONTEXT_OPTIONS) as (keyof typeof CONTEXT_OPTIONS)[]).map((k) => (
               <div key={k}>
                 {CONTEXT_OPTIONS[k].map((o) => (
