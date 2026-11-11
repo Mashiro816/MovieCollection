@@ -47,9 +47,18 @@ export async function syncAll() {
   if (!supabase || !useSync.getState().session) return
   useSync.setState({ status: 'syncing', error: '' })
   try {
-    const { data, error } = await supabase.from('entries').select('data')
-    if (error) throw error
-    const remote = (data ?? []).map((r) => r.data as Entry)
+    // Supabase 一次最多返回 1000 行，分页取完
+    const remote: Entry[] = []
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase
+        .from('entries')
+        .select('data')
+        .order('tmdb_id')
+        .range(from, from + 999)
+      if (error) throw error
+      remote.push(...(data ?? []).map((r) => r.data as Entry))
+      if (!data || data.length < 1000) break
+    }
     const remoteById = new Map(remote.map((e) => [e.id, e]))
 
     useLog.getState().merge(remote)

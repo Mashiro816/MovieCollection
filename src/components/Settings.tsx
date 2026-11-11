@@ -14,13 +14,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-function TmdbKey() {
-  return (
-    <p className="text-sm leading-relaxed text-ash">
-      海报和简介来自 TMDB。访问 TMDB 用的 key 保存在服务端的环境变量{' '}
-      <code className="num text-bone">TMDB_KEY</code> 里，不会出现在网页中。
-    </p>
-  )
+function DataSource() {
+  return <p className="text-sm text-ash">数据来源于 TMDB。</p>
 }
 
 function Cloud() {
@@ -177,20 +172,13 @@ export function Settings() {
     <div>
       <PageTitle>设置</PageTitle>
       <Section title="电影数据">
-        <TmdbKey />
+        <DataSource />
       </Section>
       <Section title="云同步">
         <Cloud />
       </Section>
       <Section title="备份">
         <Backup />
-      </Section>
-      <Section title="关于">
-        <p className="text-[13px] leading-relaxed text-ash">
-          本应用使用 TMDB API 提供的电影数据和图片，但未获得 TMDB 的认可或认证。
-          <br />
-          This product uses the TMDB API but is not endorsed or certified by TMDB.
-        </p>
       </Section>
     </div>
   )
