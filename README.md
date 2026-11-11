@@ -34,9 +34,9 @@ npm run dev                  # 打开终端里显示的地址
 
 1. 在 [themoviedb.org](https://www.themoviedb.org/) 注册账号。
 2. 进入账号设置里的 API 页面，申请一个 key（个人用途免费）。
-3. 把 API Key 或 Read Access Token 填到 `VITE_TMDB_KEY`。
+3. 把 API Key 或 Read Access Token 填到 `.env.local` 的 `VITE_TMDB_KEY`，然后重启 `npm run dev`。
 
-也可以不配环境变量，直接在应用的"设置"页里填，那样 key 只保存在当前浏览器。
+key 只在这里配置，网页里没有填写入口。`.env.local` 已在 `.gitignore` 里，不会被提交。部署到线上时，在托管平台的环境变量里填同一个变量。
 
 注意：带 `VITE_` 前缀的变量会被打包进前端代码，任何打开你网站的人都能在浏览器里看到这个 key。个人自用问题不大；如果介意，可以自己搭一个代理，把 `VITE_TMDB_API` 指向它，所有请求都从 `src/lib/tmdb.ts` 发出，只需要改这一个文件。
 
@@ -87,7 +87,7 @@ src/
     TierWall.tsx       评级墙
     Series.tsx         系列追踪
     Stats.tsx          统计
-    Settings.tsx       设置（TMDB key、云同步、备份）
+    Settings.tsx       设置（云同步、备份）
     SearchDialog.tsx   搜索并添加电影
     DetailSheet.tsx    电影详情和评级
     TonightDialog.tsx  今晚看什么

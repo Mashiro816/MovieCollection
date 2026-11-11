@@ -8,7 +8,6 @@ import type { CollectionInfo, Entry, MovieDetails, MovieLite, Status } from './t
 interface LogState {
   entries: Record<number, Entry>
   collections: Record<number, CollectionInfo>
-  tmdbKey: string
   add: (movie: MovieLite, status: Status) => void
   patch: (id: number, changes: Partial<Entry>) => void
   enrich: (details: MovieDetails) => void
@@ -16,7 +15,6 @@ interface LogState {
   /** 合并来自云端或导入文件的记录，同一部电影保留 updatedAt 较新的一份 */
   merge: (incoming: Entry[]) => void
   setCollection: (info: CollectionInfo) => void
-  setTmdbKey: (key: string) => void
 }
 
 const now = () => new Date().toISOString()
@@ -34,7 +32,6 @@ export const useLog = create<LogState>()(
     (set, get) => ({
       entries: {},
       collections: {},
-      tmdbKey: '',
 
       add: (movie, status) => {
         const prev = get().entries[movie.id]
@@ -100,9 +97,17 @@ export const useLog = create<LogState>()(
         }),
 
       setCollection: (info) => set((s) => ({ collections: { ...s.collections, [info.id]: info } })),
-      setTmdbKey: (tmdbKey) => set({ tmdbKey }),
     }),
-    { name: 'midnight-log-v1' },
+    {
+      name: 'midnight-log-v1',
+      version: 2,
+      // 旧版本曾把 TMDB key 存在浏览器里，升级时删掉
+      migrate: (persisted) => {
+        const state = { ...(persisted as Record<string, unknown>) }
+        delete state.tmdbKey
+        return state as unknown as LogState
+      },
+    },
   ),
 )
 

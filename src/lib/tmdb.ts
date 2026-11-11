@@ -3,15 +3,14 @@
  * 以后想把 key 藏到服务端，或者换成代理，只需要改这里（或设置 VITE_TMDB_API / VITE_TMDB_IMG）。
  */
 import { KEYWORD_TO_TAG } from './constants'
-import { useLog } from './store'
 import type { CollectionInfo, MovieDetails, MovieLite } from './types'
 
 const API = import.meta.env.VITE_TMDB_API || 'https://api.themoviedb.org/3'
 const IMG = import.meta.env.VITE_TMDB_IMG || 'https://image.tmdb.org/t/p'
-const ENV_KEY: string = import.meta.env.VITE_TMDB_KEY || ''
+// key 只从环境变量读取（本地是 .env.local，线上是托管平台的环境变量），网页里没有填写入口
+const KEY: string = (import.meta.env.VITE_TMDB_KEY || '').trim()
 
-export const hasEnvKey = Boolean(ENV_KEY)
-export const getKey = () => ENV_KEY || useLog.getState().tmdbKey.trim()
+export const getKey = () => KEY
 
 export const posterUrl = (path: string | null, size: 'w185' | 'w342' | 'w500' = 'w342') =>
   path ? `${IMG}/${size}${path}` : null
@@ -21,7 +20,7 @@ export class TmdbError extends Error {}
 
 async function request<T>(path: string, params: Record<string, string> = {}): Promise<T> {
   const key = getKey()
-  if (!key) throw new TmdbError('还没有填写 TMDB key，请到"设置"里填写')
+  if (!key) throw new TmdbError('还没有配置 TMDB key：在 .env.local 里填写 VITE_TMDB_KEY 后重启')
   const url = new URL(API + path)
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v)
   // v4 的 Read Access Token 是 JWT（eyJ 开头），放在请求头；v3 的 key 放在查询参数
@@ -34,7 +33,7 @@ async function request<T>(path: string, params: Record<string, string> = {}): Pr
   } catch {
     throw new TmdbError('连不上 TMDB，请检查网络')
   }
-  if (res.status === 401) throw new TmdbError('TMDB key 无效，请到"设置"里检查')
+  if (res.status === 401) throw new TmdbError('TMDB key 无效，请检查 .env.local 里的 VITE_TMDB_KEY')
   if (!res.ok) throw new TmdbError(`TMDB 返回错误（${res.status}）`)
   return res.json() as Promise<T>
 }

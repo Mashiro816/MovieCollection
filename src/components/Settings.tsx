@@ -1,8 +1,8 @@
 import { Download, RefreshCw, Upload } from 'lucide-react'
-import { useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useEntries, useLog } from '../lib/store'
 import { cloudEnabled, signIn, signOut, signUp, syncAll, useSync } from '../lib/sync'
-import { hasEnvKey, searchMovies } from '../lib/tmdb'
+import { getKey } from '../lib/tmdb'
 import type { Entry } from '../lib/types'
 import { PageTitle } from './ui'
 
@@ -16,50 +16,13 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function TmdbKey() {
-  const { tmdbKey, setTmdbKey } = useLog()
-  const [draft, setDraft] = useState(tmdbKey)
-  const [msg, setMsg] = useState('')
-
-  if (hasEnvKey) return <p className="text-sm text-ash">TMDB key 已在部署配置里设置，这里不用填。</p>
-
-  const save = async (e: FormEvent) => {
-    e.preventDefault()
-    setTmdbKey(draft.trim())
-    if (!draft.trim()) return setMsg('已清除')
-    setMsg('正在验证')
-    try {
-      await searchMovies('The Shining')
-      setMsg('已保存，key 可用')
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : '验证失败')
-    }
-  }
-
-  return (
-    <form onSubmit={save}>
-      <p className="mb-4 text-sm text-ash">
-        电影的海报和简介来自 TMDB。在{' '}
-        <a className="text-bone underline" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">
-          themoviedb.org 的 API 设置页
-        </a>{' '}
-        免费申请一个 key 后填在这里。key 只保存在这台设备的浏览器里。
-      </p>
-      <label className="label" htmlFor="tmdb-key">
-        API Key 或 Read Access Token
-      </label>
-      <div className="flex gap-2">
-        <input
-          id="tmdb-key"
-          className="field num"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <button className="btn btn-primary shrink-0">保存</button>
-      </div>
-      {msg && <p className="mt-2 text-[13px] text-ash">{msg}</p>}
-    </form>
+  return getKey() ? (
+    <p className="text-sm text-ash">海报和简介来自 TMDB，key 已配置。</p>
+  ) : (
+    <p className="text-sm text-ash">
+      还没有配置 TMDB key，搜索不可用。在项目根目录的 <code className="num text-bone">.env.local</code> 里填写{' '}
+      <code className="num text-bone">VITE_TMDB_KEY</code>，然后重启。申请方法见 README。
+    </p>
   )
 }
 

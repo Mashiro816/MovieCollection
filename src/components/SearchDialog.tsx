@@ -69,7 +69,7 @@ function Result({ movie }: { movie: MovieLite }) {
 }
 
 export function SearchDialog() {
-  const { searchOpen, setSearchOpen, go } = useUi()
+  const { searchOpen, setSearchOpen } = useUi()
   const [query, setQuery] = useState('')
   const [horrorOnly, setHorrorOnly] = useState(true)
   const [results, setResults] = useState<MovieLite[] | null>(null)
@@ -155,18 +155,10 @@ export function SearchDialog() {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
           {noKey ? (
-            <div className="py-8">
-              <p className="mb-3 text-sm text-ash">搜索需要一个 TMDB key（免费）。填好之后就能搜到海报和简介。</p>
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  close()
-                  go('settings')
-                }}
-              >
-                去设置里填写
-              </button>
-            </div>
+            <p className="py-8 text-sm leading-relaxed text-ash">
+              还没有配置 TMDB key，搜不到电影。在项目根目录的 <code className="num text-bone">.env.local</code> 里填写{' '}
+              <code className="num text-bone">VITE_TMDB_KEY</code>，然后重启。
+            </p>
           ) : error ? (
             <p className="py-8 text-sm text-flare">{error}</p>
           ) : results === null ? (
