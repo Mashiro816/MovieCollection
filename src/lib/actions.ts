@@ -26,11 +26,12 @@ export function useOverlay(open: boolean, onClose: () => void) {
       // 下拉菜单开着时，Esc 只关菜单，不关弹层
       if (e.key === 'Escape' && !document.querySelector('[role="listbox"]')) onClose()
     }
-    document.addEventListener('keydown', onKey)
+    // 用捕获阶段监听，赶在下拉菜单自己处理 Esc 之前判断它是否开着
+    document.addEventListener('keydown', onKey, true)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
-      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('keydown', onKey, true)
       document.body.style.overflow = prev
     }
   }, [open, onClose])
