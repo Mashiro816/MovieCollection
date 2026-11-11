@@ -126,13 +126,22 @@ export function useEntry(id: number | undefined): Entry | null {
 
 export type View = 'library' | 'tiers' | 'series' | 'stats' | 'settings'
 export type LibraryView = 'grid' | 'ring'
+export type SeriesView = 'posters' | 'trend'
 
-const VIEW_KEY = 'midnight-log-view'
-function readView(): LibraryView {
+/** 读写"上次选的展示方式"。存在浏览器里，存不了就只在本次打开期间生效 */
+function readPref<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
-    return localStorage.getItem(VIEW_KEY) === 'ring' ? 'ring' : 'grid'
+    const v = localStorage.getItem(key) as T | null
+    return v && allowed.includes(v) ? v : fallback
   } catch {
-    return 'grid'
+    return fallback
+  }
+}
+function writePref(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    /* 忽略 */
   }
 }
 
@@ -141,12 +150,14 @@ interface UiState {
   libraryTab: Status
   /** 片单的展示方式：海报墙或环形展台。记在浏览器里，下次打开还是上次选的 */
   libraryView: LibraryView
+  seriesView: SeriesView
   detail: MovieLite | null
   searchOpen: boolean
   tonightOpen: boolean
   go: (view: View) => void
   setLibraryTab: (tab: Status) => void
   setLibraryView: (view: LibraryView) => void
+  setSeriesView: (view: SeriesView) => void
   openDetail: (movie: MovieLite | null) => void
   setSearchOpen: (open: boolean) => void
   setTonightOpen: (open: boolean) => void
@@ -155,7 +166,8 @@ interface UiState {
 export const useUi = create<UiState>()((set) => ({
   view: 'library',
   libraryTab: 'watched',
-  libraryView: readView(),
+  libraryView: readPref('midnight-log-view', ['grid', 'ring'], 'grid'),
+  seriesView: readPref('midnight-log-series-view', ['posters', 'trend'], 'posters'),
   detail: null,
   searchOpen: false,
   tonightOpen: false,
@@ -165,12 +177,12 @@ export const useUi = create<UiState>()((set) => ({
   },
   setLibraryTab: (libraryTab) => set({ libraryTab }),
   setLibraryView: (libraryView) => {
-    try {
-      localStorage.setItem(VIEW_KEY, libraryView)
-    } catch {
-      /* 存不了就只在本次打开期间生效 */
-    }
+    writePref('midnight-log-view', libraryView)
     set({ libraryView })
+  },
+  setSeriesView: (seriesView) => {
+    writePref('midnight-log-series-view', seriesView)
+    set({ seriesView })
   },
   openDetail: (detail) => set({ detail }),
   setSearchOpen: (searchOpen) => set({ searchOpen }),

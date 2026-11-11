@@ -6,7 +6,7 @@ import { useEntries, useUi } from '../lib/store'
 import { backdropUrl } from '../lib/tmdb'
 import type { Entry, Status, TierId } from '../lib/types'
 import { Ring } from './Ring'
-import { Empty, Poster, Select, Skulls, TierBadge } from './ui'
+import { Empty, Poster, Select, Skulls, TierBadge, ViewToggle } from './ui'
 
 type Sort = 'recent' | 'tier' | 'scare' | 'year' | 'runtime'
 
@@ -48,18 +48,12 @@ interface Group {
 }
 
 /**
- * 把排好序的片单按当前的排序方式分段：按观看月份、按评级、按吓人指数、按年代。
- * 返回 null 表示这种排序不需要分段（比如想看片单按添加时间排）。
+ * 把排好序的片单按当前的排序方式分段：按评级、按吓人指数、按年代。
+ * 返回 null 表示这种排序不分段（按观看或添加时间排、按片长排）。
  */
-function groupEntries(list: Entry[], sort: Sort, tab: Status): Group[] | null {
+function groupEntries(list: Entry[], sort: Sort): Group[] | null {
   let keyOf: (e: Entry) => Omit<Group, 'items'>
-  if (sort === 'recent' && tab === 'watched') {
-    keyOf = (e) => {
-      if (!e.watchedAt) return { key: 'none', title: '不详', sub: '观看日期' }
-      const [y, m] = e.watchedAt.split('-')
-      return { key: `${y}-${m}`, title: `${Number(m)} 月`, sub: `${y} 年` }
-    }
-  } else if (sort === 'tier') {
+  if (sort === 'tier') {
     keyOf = (e) => {
       const t = tierOf(e.tier)
       return t
@@ -93,11 +87,11 @@ function groupEntries(list: Entry[], sort: Sort, tab: Status): Group[] | null {
 }
 
 /** 分段牌：和海报一样大，插在每一段的开头。海报墙因此保持连续，不会因为分段而留下大片空白 */
-function GroupTile({ group }: { group: Group }) {
+function GroupTile({ group, still }: { group: Group; still: boolean }) {
   const color = group.color
   return (
     <motion.div
-      layout="position"
+      layout={still ? false : 'position'}
       className="relative flex aspect-[2/3] flex-col justify-end overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02] p-3 md:p-4"
       style={color ? { background: `radial-gradient(120% 90% at 0% 100%, ${color}24, transparent 70%)` } : undefined}
     >
@@ -164,13 +158,14 @@ function Hero({ entry }: { entry: Entry }) {
   )
 }
 
-export function MovieCard({ entry, index = 0 }: { entry: Entry; index?: number }) {
+export function MovieCard({ entry, index = 0, still = false }: { entry: Entry; index?: number; still?: boolean }) {
   const openDetail = useUi((s) => s.openDetail)
   // 鼠标悬停时在海报底部浮出的一行：有短评显示短评，没有就显示子类型
   const peek = entry.note ? `"${entry.note}"` : entry.tags.slice(0, 3).join(' / ')
   return (
     <motion.button
-      layout="position"
+      // 筛选后卡片滑到新位置；片单很长时关掉，几百张一起算位移会卡
+      layout={still ? false : 'position'}
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: Math.min(index, 14) * 0.028 }}
@@ -241,7 +236,7 @@ export function Library() {
     )
     return sortEntries(list, activeSort, tab)
   }, [inTab, tier, tag, activeSort, tab])
-  const groups = useMemo(() => groupEntries(shown, activeSort, tab), [shown, activeSort, tab])
+  const groups = useMemo(() => groupEntries(shown, activeSort), [shown, activeSort])
 
   const switchTab = (t: Status) => {
     setLibraryTab(t)
@@ -250,6 +245,7 @@ export function Library() {
   }
 
   let cardIndex = 0 // 入场动画的先后顺序，跨分段连续计数
+  const still = shown.length > 120
 
   return (
     <div>
@@ -338,38 +334,16 @@ export function Library() {
               options={SORTS[tab]}
               className="order-3 md:order-none md:ml-auto"
             />
-            <div
-              className="order-2 ml-auto flex rounded-full border border-white/10 bg-white/[0.04] p-0.5 md:order-last md:ml-0"
-              role="group"
-              aria-label="展示方式"
-            >
-              {(
-                [
-                  { value: 'grid', label: '海报墙', icon: LayoutGrid },
-                  { value: 'ring', label: '环形展台', icon: Orbit },
-                ] as const
-              ).map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  onClick={() => setLibraryView(value)}
-                  aria-pressed={view === value}
-                  aria-label={label}
-                  title={label}
-                  className={`relative flex h-8 w-10 items-center justify-center rounded-full transition-colors duration-200 ${
-                    view === value ? 'text-ink' : 'text-ash hover:text-bone'
-                  }`}
-                >
-                  {view === value && (
-                    <motion.span
-                      layoutId="library-view"
-                      className="absolute inset-0 rounded-full bg-bone"
-                      transition={{ type: 'spring', stiffness: 460, damping: 36 }}
-                    />
-                  )}
-                  <Icon size={16} className="relative" />
-                </button>
-              ))}
-            </div>
+            <ViewToggle
+              id="library-view"
+              className="order-2 ml-auto md:order-last md:ml-0"
+              value={view}
+              onChange={setLibraryView}
+              options={[
+                { value: 'grid', label: '海报墙', icon: LayoutGrid },
+                { value: 'ring', label: '环形展台', icon: Orbit },
+              ]}
+            />
           </div>
 
           {shown.length === 0 ? (
@@ -380,14 +354,14 @@ export function Library() {
           ) : groups ? (
             <div key={`${tab}-${activeSort}`} className={GRID}>
               {groups.flatMap((g) => [
-                <GroupTile key={`group-${g.key}`} group={g} />,
-                ...g.items.map((e) => <MovieCard key={e.id} entry={e} index={cardIndex++} />),
+                <GroupTile key={`group-${g.key}`} group={g} still={still} />,
+                ...g.items.map((e) => <MovieCard key={e.id} entry={e} index={cardIndex++} still={still} />),
               ])}
             </div>
           ) : (
             <div key={`${tab}-${activeSort}`} className={GRID}>
               {shown.map((e, i) => (
-                <MovieCard key={e.id} entry={e} index={i} />
+                <MovieCard key={e.id} entry={e} index={i} still={still} />
               ))}
             </div>
           )}

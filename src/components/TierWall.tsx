@@ -1,9 +1,13 @@
 import { motion } from 'motion/react'
-import { useMemo } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { TIERS } from '../lib/constants'
 import { useEntries, useUi } from '../lib/store'
 import type { Entry } from '../lib/types'
 import { Empty, PageTitle, Poster } from './ui'
+
+// 每档默认显示多少张：手机一行 5 张，显示 4 行；电脑显示两行左右
+const FOLD = window.matchMedia('(min-width: 768px)').matches ? 18 : 20
 
 function Row({
   letter,
@@ -19,12 +23,16 @@ function Row({
   index: number
 }) {
   const openDetail = useUi((s) => s.openDetail)
+  // 一档里电影很多时先只显示前面一部分，避免整页被一档占满
+  const [expanded, setExpanded] = useState(false)
+  const collapsible = entries.length > FOLD + 6
+  const shown = collapsible && !expanded ? entries.slice(0, FOLD) : entries
   return (
     <motion.section
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: index * 0.06 }}
-      className="card relative grid overflow-hidden md:grid-cols-[190px_1fr]"
+      className="card relative grid overflow-clip md:grid-cols-[190px_1fr]"
       aria-label={name}
     >
       {/* 档位颜色从左侧晕开，越靠右越淡 */}
@@ -34,7 +42,7 @@ function Row({
       />
       <div className="absolute inset-y-0 left-0 w-[3px]" style={{ background: color }} />
 
-      <div className="relative flex items-center gap-3 px-5 pt-4 md:flex-col md:items-start md:justify-center md:gap-0 md:px-7 md:py-6">
+      <div className="relative flex items-center gap-3 px-5 pt-4 md:sticky md:top-24 md:flex-col md:items-start md:justify-center md:gap-0 md:self-start md:px-7 md:py-6">
         <span
           className="num text-[40px] leading-none font-bold md:text-[72px]"
           style={{ color, textShadow: `0 0 36px ${color}66` }}
@@ -49,7 +57,7 @@ function Row({
         {entries.length === 0 ? (
           <span className="col-span-5 self-center text-[13px] text-dim">这一档还空着</span>
         ) : (
-          entries.map((e) => (
+          shown.map((e) => (
             <button
               key={e.id}
               onClick={() => openDetail(e)}
@@ -59,6 +67,14 @@ function Row({
               <Poster movie={e} size="w185" className="rounded-lg" />
             </button>
           ))
+        )}
+        {collapsible && (
+          <div className="col-span-5 md:basis-full">
+            <button onClick={() => setExpanded(!expanded)} aria-expanded={expanded} className="chip mt-1">
+              {expanded ? '收起' : `显示全部 ${entries.length} 部`}
+              <ChevronDown size={14} className={`ml-1 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
         )}
       </div>
     </motion.section>

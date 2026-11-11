@@ -1,5 +1,5 @@
 import * as RSelect from '@radix-ui/react-select'
-import { Check, ChevronDown, Skull } from 'lucide-react'
+import { Check, ChevronDown, Skull, type LucideIcon } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useState, type ReactNode } from 'react'
 import { tierOf } from '../lib/constants'
@@ -192,5 +192,50 @@ export function Backdrop({ onClick, className = '' }: { onClick: () => void; cla
       transition={{ duration: 0.2 }}
       onClick={onClick}
     />
+  )
+}
+
+/** 两种展示方式之间的切换按钮。id 用来区分页面上的不同切换器（选中的白色滑块各滑各的） */
+export function ViewToggle<T extends string>({
+  id,
+  value,
+  onChange,
+  options,
+  className = '',
+}: {
+  id: string
+  value: T
+  onChange: (v: T) => void
+  options: { value: T; label: string; icon: LucideIcon }[]
+  className?: string
+}) {
+  return (
+    <div
+      className={`flex rounded-full border border-white/10 bg-white/[0.04] p-0.5 ${className}`}
+      role="group"
+      aria-label="展示方式"
+    >
+      {options.map(({ value: v, label, icon: Icon }) => (
+        <button
+          key={v}
+          onClick={() => onChange(v)}
+          aria-pressed={value === v}
+          aria-label={label}
+          title={label}
+          className={`relative flex h-8 w-10 items-center justify-center rounded-full transition-colors duration-200 ${
+            value === v ? 'text-ink' : 'text-ash hover:text-bone'
+          }`}
+        >
+          {value === v && (
+            <motion.span
+              layoutId={id}
+              className="absolute inset-0 rounded-full bg-bone"
+              transition={{ type: 'spring', stiffness: 460, damping: 36 }}
+            />
+          )}
+          <Icon size={16} className="relative" />
+        </button>
+      ))}
+    </div>
   )
 }
