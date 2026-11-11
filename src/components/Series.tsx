@@ -33,7 +33,7 @@ function SeriesBlock({ id, name, mine }: { id: number; name: string; mine: Entry
 
   return (
     <section className="card mb-4 px-5 py-5 md:px-7 md:py-6">
-      <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1">
         <h2 className="font-serif text-[22px] font-bold">{info?.name ?? name}</h2>
         <p className="num text-sm text-ash">
           已看 <span className={done ? 'text-flare' : 'text-bone'}>{watched}</span>

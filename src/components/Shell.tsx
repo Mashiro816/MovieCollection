@@ -98,7 +98,12 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-[460px]"
+          style={{ background: 'radial-gradient(75% 100% at 28% 0%, rgb(200 16 46 / 0.16), transparent 72%)' }}
+        />
         {/* 顶栏浮在内容上方，首页的大图会从它下面透出来 */}
         <header className="sticky top-0 z-20 bg-gradient-to-b from-ink via-ink/75 to-transparent px-4 pt-3 pb-5 md:px-10">
           <div className="flex items-center gap-3">
@@ -108,7 +113,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="flex-1 px-4 pt-2 pb-32 md:px-10 md:pt-4 md:pb-20">{children}</main>
+        <main className="relative flex-1 px-4 pt-2 pb-32 md:px-10 md:pt-4 md:pb-20">{children}</main>
       </div>
 
       {/* 手机：底部悬浮导航 */}

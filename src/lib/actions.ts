@@ -18,6 +18,10 @@ export function addMovie(movie: MovieLite, status: Status) {
   }
 }
 
+// 当前开着几个弹层。用计数而不是"记住之前的状态再还原"：
+// 两个弹层交替开关时（比如从搜索结果进详情），后者会把前者留下的锁定状态当成原状还原回去，页面就再也滚不动了。
+let openOverlays = 0
+
 /** 弹层打开时：按 Esc 关闭，并锁住背景滚动 */
 export function useOverlay(open: boolean, onClose: () => void) {
   useEffect(() => {
@@ -28,13 +32,18 @@ export function useOverlay(open: boolean, onClose: () => void) {
     }
     // 用捕获阶段监听，赶在下拉菜单自己处理 Esc 之前判断它是否开着
     document.addEventListener('keydown', onKey, true)
-    const prev = document.body.style.overflow
+    return () => document.removeEventListener('keydown', onKey, true)
+  }, [open, onClose])
+
+  useEffect(() => {
+    if (!open) return
+    openOverlays += 1
     document.body.style.overflow = 'hidden'
     return () => {
-      document.removeEventListener('keydown', onKey, true)
-      document.body.style.overflow = prev
+      openOverlays -= 1
+      if (openOverlays === 0) document.body.style.overflow = ''
     }
-  }, [open, onClose])
+  }, [open])
 }
 
 /** 移出片单，并给一个撤销的机会 */
